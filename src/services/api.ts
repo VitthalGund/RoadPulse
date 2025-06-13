@@ -31,7 +31,13 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-
+    // Exclude login and register endpoints from refresh logic
+    const isAuthEndpoint =
+      originalRequest.url?.includes("/api/auth/login") ||
+      originalRequest.url?.includes("/api/auth/register");
+    if (isAuthEndpoint) {
+      return Promise.reject(error);
+    }
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
@@ -56,12 +62,16 @@ api.interceptors.response.use(
           localStorage.removeItem("access_token");
           localStorage.removeItem("refresh_token");
           localStorage.removeItem("user");
-          window.location.href = "/login";
+          console.log(window.location.href);
+          if (window.location.pathname !== "/") {
+            window.location.href = "/login";
+          }
           return Promise.reject(refreshError);
         }
       } else {
-        // No refresh token, redirect to login
-        window.location.href = "/login";
+        if (window.location.pathname !== "/") {
+          window.location.href = "/login";
+        }
       }
     }
 
