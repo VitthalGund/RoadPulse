@@ -1,38 +1,86 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { motion } from 'framer-motion';
-import { 
-  MapPin, 
-  Truck, 
-  Clock, 
+import { useState, useRef } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { useForm, SubmitHandler } from "react-hook-form";
+import { motion } from "framer-motion";
+import {
+  MapPin,
+  Truck,
+  Clock,
   Calendar,
   Route,
   Save,
-  AlertCircle
-} from 'lucide-react';
-import { useVehicles } from '../hooks/useVehicles';
-import { useCreateTrip, useCalculateRoute } from '../hooks/useTrips';
-import Button from '../components/UI/Button';
-import Input from '../components/UI/Input';
-import Card from '../components/UI/Card';
+  AlertCircle,
+  ArrowLeft,
+  Plus,
+} from "lucide-react";
+import { useVehicles } from "../hooks/useVehicles";
+import { useCreateTrip, useCalculateRoute } from "../hooks/useTrips";
+import Button from "../components/UI/Button";
+import Input from "../components/UI/Input";
+import Card from "../components/UI/Card";
+import L from "leaflet";
+import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+
+interface Vehicle {
+  id: number;
+  vehicle_number: string;
+  license_plate: string;
+}
+
+interface DutyStatus {
+  status: "DRIVING" | "ON_DUTY_NOT_DRIVING" | "OFF_DUTY" | string;
+  start_time: string;
+  end_time: string;
+  location_description: string;
+}
+
+interface RouteData {
+  total_miles: number;
+  duty_statuses: DutyStatus[];
+}
+
+interface Suggestion {
+  place_id: string;
+  display_name: string;
+  lat: string;
+  lon: string;
+}
 
 interface TripForm {
   vehicle: string;
   current_location: string;
+  current_location_coords: [number, number] | null;
   pickup_location: string;
+  pickup_location_coords: [number, number] | null;
   dropoff_location: string;
+  dropoff_location_coords: [number, number] | null;
   current_cycle_hours: number;
   start_time: string;
 }
 
-const CreateTripPage: React.FC = () => {
-  const [error, setError] = useState('');
-  const [routeCalculated, setRouteCalculated] = useState(false);
-  const [routeData, setRouteData] = useState<any>(null);
-  const navigate = useNavigate();
+interface MapClickHandlerProps {
+  field: string;
+}
 
-  // API hooks
+const CreateTripPage: React.FC = () => {
+  const [error, setError] = useState<string>("");
+  const [routeCalculated, setRouteCalculated] = useState<boolean>(false);
+  const [routeData, setRouteData] = useState<RouteData | null>(null);
+  const [suggestions, setSuggestions] = useState<{
+    current: Suggestion[];
+    pickup: Suggestion[];
+    dropoff: Suggestion[];
+  }>({
+    current: [],
+    pickup: [],
+    dropoff: [],
+  });
+  const [activeField, setActiveField] = useState<string | null>(null);
+  const [geolocationLoading, setGeolocationLoading] = useState<boolean>(false);
+  const navigate = useNavigate();
+  const mapRef = useRef<L.Map | null>(null);
+
   const { data: vehicles = [], isLoading: vehiclesLoading } = useVehicles();
   const createTripMutation = useCreateTrip();
   const calculateRouteMutation = useCalculateRoute();
@@ -43,98 +91,190 @@ const CreateTripPage: React.FC = () => {
     watch,
     formState: { errors },
     setValue,
-  } = useForm<TripForm>();
+  } = useForm<TripForm>({
+    defaultValues: {
+      vehicle: "",
+      current_location: "",
+      current_location_coords: null,
+      pickup_location: "",
+      pickup_location_coords: null,
+      dropoff_location: "",
+      dropoff_location_coords: null,
+      current_cycle_hours: 0,
+      start_time: "",
+    },
+  });
 
-  const cycleHours = watch('current_cycle_hours');
+  const cycleHours = watch("current_cycle_hours");
+  const currentCoords = watch("current_location_coords");
+  const pickupCoords = watch("pickup_location_coords");
+  const dropoffCoords = watch("dropoff_location_coords");
 
-  // Helper function to parse location input (city name or coordinates)
-  const parseLocation = (locationStr: string): [number, number] => {
-    // Try to parse as coordinates first (lon,lat)
-    const coordMatch = locationStr.match(/^(-?\d+\.?\d*),\s*(-?\d+\.?\d*)$/);
-    if (coordMatch) {
-      return [parseFloat(coordMatch[1]), parseFloat(coordMatch[2])];
+  const fetchSuggestions = async (query: string, field: string) => {
+    if (query.length < 3) {
+      setSuggestions((prev) => ({ ...prev, [field]: [] }));
+      return;
     }
-    
-    // For demo purposes, return mock coordinates for common cities
-    const cityCoords: { [key: string]: [number, number] } = {
-      'richmond': [-77.4360, 37.5407],
-      'norfolk': [-76.2859, 36.8508],
-      'virginia beach': [-75.9780, 36.8529],
-      'chesapeake': [-76.2875, 36.7682],
-      'newport news': [-76.4730, 37.0871],
-      'hampton': [-76.3452, 37.0299],
-    };
-    
-    const cityKey = locationStr.toLowerCase().trim();
-    return cityCoords[cityKey] || [-77.4360, 37.5407]; // Default to Richmond
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
+          query
+        )}&format=json&limit=5`,
+        { headers: { "User-Agent": "RoadPulse/1.0" } }
+      );
+      const data: Suggestion[] = await response.json();
+      setSuggestions((prev) => ({ ...prev, [field]: data }));
+    } catch (err: unknown) {
+      console.error("Failed to fetch suggestions:", err);
+    }
   };
 
-  const onSubmit = async (data: TripForm) => {
-    setError('');
-    
-    try {
-      // Parse locations
-      const currentLocation = parseLocation(data.current_location);
-      const pickupLocation = parseLocation(data.pickup_location);
-      const dropoffLocation = parseLocation(data.dropoff_location);
+  const handleLocationSelect = (field: string, item: Suggestion) => {
+    setValue(`${field}_location`, item.display_name);
+    setValue(`${field}_location_coords`, [
+      parseFloat(item.lon),
+      parseFloat(item.lat),
+    ]);
+    setSuggestions((prev) => ({ ...prev, [field]: [] }));
+    setActiveField(null);
+    if (mapRef.current) {
+      mapRef.current.setView([parseFloat(item.lat), parseFloat(item.lon)], 10);
+    }
+  };
 
-      // Create trip
+  const handleGetCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setError("Geolocation is not supported by your browser");
+      return;
+    }
+    setGeolocationLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+            { headers: { "User-Agent": "RoadPulse/1.0" } }
+          );
+          const data = await response.json();
+          setValue(
+            "current_location",
+            data.display_name || `${longitude}, ${latitude}`
+          );
+          setValue("current_location_coords", [longitude, latitude]);
+          if (mapRef.current) {
+            mapRef.current.setView([latitude, longitude], 10);
+          }
+        } catch (err: unknown) {
+          console.error("Failed to reverse geocode:", err);
+          setError("Failed to get location name");
+        } finally {
+          setGeolocationLoading(false);
+        }
+      },
+      (err) => {
+        setError(err.message || "Failed to get current location");
+        setGeolocationLoading(false);
+      }
+    );
+  };
+
+  const MapClickHandler: React.FC<MapClickHandlerProps> = ({ field }) => {
+    useMapEvents({
+      click(e: L.LeafletMouseEvent) {
+        const { lat, lng } = e.latlng;
+        fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+          { headers: { "User-Agent": "RoadPulse/1.0" } }
+        )
+          .then((res) => res.json())
+          .then((data) => {
+            setValue(
+              `${field}_location`,
+              data.display_name || `${lng}, ${lat}`
+            );
+            setValue(`${field}_location_coords`, [lng, lat]);
+          })
+          .catch((err: unknown) => {
+            console.error("Failed to reverse geocode:", err);
+          });
+      },
+    });
+    return null;
+  };
+
+  const onSubmit: SubmitHandler<TripForm> = async (data) => {
+    setError("");
+    if (
+      !data.current_location_coords ||
+      !data.pickup_location_coords ||
+      !data.dropoff_location_coords
+    ) {
+      setError("All location coordinates are required");
+      return;
+    }
+    try {
       const newTrip = await createTripMutation.mutateAsync({
-        vehicle: parseInt(data.vehicle),
-        current_location: currentLocation,
-        pickup_location: pickupLocation,
-        dropoff_location: dropoffLocation,
+        vehicle: parseInt(data.vehicle, 10),
+        current_location: data.current_location_coords,
+        current_location_name: data.current_location,
+        pickup_location: data.pickup_location_coords,
+        pickup_location_name: data.pickup_location,
+        dropoff_location: data.dropoff_location_coords,
+        dropoff_location_name: data.dropoff_location,
         current_cycle_hours: data.current_cycle_hours,
         start_time: data.start_time,
+        status: "PLANNED",
       });
-
-      // Navigate to trip details
       navigate(`/trips/${newTrip.id}`);
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.error || 
-                          err.response?.data?.detail || 
-                          err.message || 
-                          'Failed to create trip';
+    } catch (err: unknown) {
+      const errorMessage =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail ||
+        (err as Error).message ||
+        "Failed to create trip";
       setError(errorMessage);
     }
   };
 
   const calculateRoute = async () => {
     const formData = watch();
-    
-    if (!formData.vehicle || !formData.pickup_location || !formData.dropoff_location) {
-      setError('Please fill in vehicle and locations before calculating route');
+    if (
+      !formData.vehicle ||
+      !formData.pickup_location_coords ||
+      !formData.dropoff_location_coords
+    ) {
+      setError("Please fill in vehicle and locations");
       return;
     }
-
     try {
-      setError('');
-      
-      // First create a temporary trip to calculate route
-      const currentLocation = parseLocation(formData.current_location);
-      const pickupLocation = parseLocation(formData.pickup_location);
-      const dropoffLocation = parseLocation(formData.dropoff_location);
-
+      setError("");
       const tempTrip = await createTripMutation.mutateAsync({
-        vehicle: parseInt(formData.vehicle),
-        current_location: currentLocation,
-        pickup_location: pickupLocation,
-        dropoff_location: dropoffLocation,
+        vehicle: parseInt(formData.vehicle, 10),
+        current_location:
+          formData.current_location_coords || formData.pickup_location_coords,
+        current_location_name:
+          formData.current_location || formData.pickup_location,
+        pickup_location: formData.pickup_location_coords,
+        pickup_location_name: formData.pickup_location,
+        dropoff_location: formData.dropoff_location_coords,
+        dropoff_location_name: formData.dropoff_location,
         current_cycle_hours: formData.current_cycle_hours || 0,
         start_time: formData.start_time || new Date().toISOString(),
+        status: "PLANNED",
       });
-
-      // Calculate route
-      const route = await calculateRouteMutation.mutateAsync(tempTrip.id);
+      const route: RouteData = await calculateRouteMutation.mutateAsync(
+        tempTrip.id
+      );
       setRouteData(route);
       setRouteCalculated(true);
-      
-      // Navigate to the created trip
       navigate(`/trips/${tempTrip.id}`);
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.error || 
-                          err.message || 
-                          'Failed to calculate route';
+    } catch (err: unknown) {
+      const errorMessage =
+        (err as { response?: { data?: { error?: string } } })?.response?.data
+          ?.error ||
+        (err as Error).message ||
+        "Failed to calculate route";
       setError(errorMessage);
     }
   };
@@ -143,156 +283,210 @@ const CreateTripPage: React.FC = () => {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="animate-pulse">
-          <div className="h-8 bg-gray-300 rounded mb-4"></div>
-          <div className="h-4 bg-gray-300 rounded mb-8"></div>
+          <div className="h-8 bg-gray-300 rounded mb-4" />
+          <div className="h-4 bg-gray-300 rounded mb-8" />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="space-y-6">
-              <div className="h-96 bg-gray-300 rounded"></div>
+              <div className="h-96 bg-gray-300 rounded" />
             </div>
-            <div className="h-96 bg-gray-300 rounded"></div>
+            <div className="h-96 bg-gray-300 rounded" />
           </div>
         </div>
       </div>
     );
   }
 
+  if (vehicles.length === 0) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex items-center space-x-4 mb-8">
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 font-poppins">
+              Create New Trip
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Plan your trip with HOS-compliant routing
+            </p>
+          </div>
+        </div>
+        <Card className="p-12 text-center">
+          <Truck className="w-16 h-16 text-gray-400 mx-auto mb-6" />
+          <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+            No Vehicles Available
+          </h2>
+          <p className="text-gray-600 mb-6 max-w-md mx-auto">
+            You need to add a vehicle to create a trip.
+          </p>
+          <Link to="/vehicles/add">
+            <Button size="lg">
+              <Plus className="w-5 h-5 mr-2" />
+              Add Vehicle
+            </Button>
+          </Link>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white font-poppins">
-          Create New Trip
-        </h1>
-        <p className="text-gray-600 dark:text-gray-300 mt-2">
-          Plan your trip with HOS-compliant routing and scheduling
-        </p>
+      <div className="flex items-center space-x-4 mb-8">
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="text-gray-500 hover:text-gray-700"
+        >
+          <ArrowLeft className="w-6 h-6" />
+        </button>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 font-poppins">
+            Create New Trip
+          </h1>
+          <p className="text-gray-600 mt-2">
+            Plan your trip with HOS-compliant routing
+          </p>
+        </div>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Trip Form */}
         <div className="space-y-6">
           <Card className="p-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6 flex items-center">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
               <MapPin className="w-5 h-5 mr-2" />
               Trip Details
             </h2>
-
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md flex items-center space-x-2"
+                className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md flex items-center space-x-2"
               >
-                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
-                <span className="text-sm text-red-600 dark:text-red-400">{error}</span>
+                <AlertCircle className="w-5 h-5 text-red-600" />
+                <span className="text-sm text-red-600">{error}</span>
               </motion.div>
             )}
-
             <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
-              {/* Vehicle Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Vehicle
                 </label>
                 <select
-                  className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-teal-500 focus:ring-teal-500 dark:bg-gray-700 dark:text-white"
-                  {...register('vehicle', { required: 'Please select a vehicle' })}
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"
+                  {...register("vehicle", {
+                    required: "Please select a vehicle",
+                  })}
                 >
                   <option value="">Select a vehicle</option>
-                  {vehicles.map((vehicle) => (
+                  {vehicles.map((vehicle: Vehicle) => (
                     <option key={vehicle.id} value={vehicle.id}>
                       {vehicle.vehicle_number} ({vehicle.license_plate})
                     </option>
                   ))}
                 </select>
                 {errors.vehicle && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  <p className="mt-1 text-sm text-red-600">
                     {errors.vehicle.message}
                   </p>
                 )}
               </div>
-
-              {/* Locations */}
-              <Input
-                label="Current Location"
-                type="text"
-                placeholder="Richmond, VA or -77.4360,37.5407"
-                icon={<MapPin className="w-4 h-4" />}
-                error={errors.current_location?.message}
-                {...register('current_location', {
-                  required: 'Current location is required',
-                })}
-              />
-
-              <Input
-                label="Pickup Location"
-                type="text"
-                placeholder="Norfolk, VA or -76.2859,36.8508"
-                icon={<MapPin className="w-4 h-4" />}
-                error={errors.pickup_location?.message}
-                {...register('pickup_location', {
-                  required: 'Pickup location is required',
-                })}
-              />
-
-              <Input
-                label="Dropoff Location"
-                type="text"
-                placeholder="Virginia Beach, VA or -75.9780,36.8529"
-                icon={<MapPin className="w-4 h-4" />}
-                error={errors.dropoff_location?.message}
-                {...register('dropoff_location', {
-                  required: 'Dropoff location is required',
-                })}
-              />
-
-              {/* HOS Information */}
-              <div>
-                <Input
-                  label="Current Cycle Hours Used"
-                  type="number"
-                  min="0"
-                  max="70"
-                  step="0.5"
-                  placeholder="20.5"
-                  icon={<Clock className="w-4 h-4" />}
-                  error={errors.current_cycle_hours?.message}
-                  {...register('current_cycle_hours', {
-                    required: 'Cycle hours are required',
-                    min: { value: 0, message: 'Hours cannot be negative' },
-                    max: { value: 70, message: 'Hours cannot exceed 70' },
-                    valueAsNumber: true,
-                  })}
-                />
-                
-                {cycleHours && (
-                  <div className="mt-2 flex items-center space-x-2">
-                    <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full transition-all duration-300 ${
-                          cycleHours > 60 ? 'bg-red-500' : cycleHours > 50 ? 'bg-yellow-500' : 'bg-green-500'
-                        }`}
-                        style={{ width: `${Math.min((cycleHours / 70) * 100, 100)}%` }}
-                      />
-                    </div>
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                      {70 - cycleHours} hours remaining
-                    </span>
+              {(["current", "pickup", "dropoff"] as const).map((field) => (
+                <div key={field} className="relative">
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      label={`${
+                        field.charAt(0).toUpperCase() + field.slice(1)
+                      } Location`}
+                      type="text"
+                      placeholder="Enter city or click on map"
+                      icon={<MapPin className="w-4 h-4" />}
+                      error={errors[`${field}_location`]?.message}
+                      {...register(`${field}_location`, {
+                        required: `${
+                          field.charAt(0).toUpperCase() + field.slice(1)
+                        } location is required`,
+                      })}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        fetchSuggestions(e.target.value, field)
+                      }
+                      onFocus={() => setActiveField(field)}
+                    />
+                    {field === "current" && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleGetCurrentLocation}
+                        loading={geolocationLoading}
+                        className="h-10"
+                      >
+                        <MapPin className="w-4 h-4" />
+                      </Button>
+                    )}
                   </div>
-                )}
-              </div>
-
+                  {activeField === field && suggestions[field].length > 0 && (
+                    <ul className="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 max-h-48 overflow-y-auto">
+                      {suggestions[field].map((item: Suggestion) => (
+                        <li
+                          key={item.place_id}
+                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                          onMouseDown={() => handleLocationSelect(field, item)}
+                        >
+                          {item.display_name}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+              <Input
+                label="Current Cycle Hours Used"
+                type="number"
+                min="0"
+                max="70"
+                step="0.5"
+                placeholder="20.5"
+                icon={<Clock className="w-4 h-4" />}
+                error={errors.current_cycle_hours?.message}
+                {...register("current_cycle_hours", {
+                  required: "Cycle hours are required",
+                  min: { value: 0, message: "Hours cannot be negative" },
+                  max: { value: 70, message: "Hours cannot exceed 70" },
+                  valueAsNumber: true,
+                })}
+              />
+              {cycleHours > 0 && (
+                <div className="mt-2 flex items-center space-x-2">
+                  <div className="flex-1 bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full transition-all duration-300 ${
+                        cycleHours > 60
+                          ? "bg-red-500"
+                          : cycleHours > 50
+                          ? "bg-yellow-500"
+                          : "bg-green-500"
+                      }`}
+                      style={{
+                        width: `${Math.min((cycleHours / 70) * 100, 100)}%`,
+                      }}
+                    />
+                  </div>
+                  <span className="text-sm text-gray-600">
+                    {70 - cycleHours} hours remaining
+                  </span>
+                </div>
+              )}
               <Input
                 label="Planned Start Time"
                 type="datetime-local"
                 icon={<Calendar className="w-4 h-4" />}
                 error={errors.start_time?.message}
-                {...register('start_time', {
-                  required: 'Start time is required',
+                {...register("start_time", {
+                  required: "Start time is required",
                 })}
               />
-
-              {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
                 <Button
                   type="button"
@@ -304,7 +498,6 @@ const CreateTripPage: React.FC = () => {
                   <Route className="w-4 h-4 mr-2" />
                   Calculate Route
                 </Button>
-                
                 <Button
                   type="submit"
                   loading={createTripMutation.isLoading}
@@ -316,8 +509,6 @@ const CreateTripPage: React.FC = () => {
               </div>
             </form>
           </Card>
-
-          {/* Route Preview */}
           {routeCalculated && routeData && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -325,35 +516,32 @@ const CreateTripPage: React.FC = () => {
               transition={{ duration: 0.6 }}
             >
               <Card className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                   <Route className="w-5 h-5 mr-2" />
                   Route Summary
                 </h3>
-                
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
+                    <span className="text-sm font-medium text-gray-700">
                       Total Distance
                     </span>
-                    <span className="text-sm text-gray-900 dark:text-white">
+                    <span className="text-sm text-gray-900">
                       {routeData.total_miles} miles
                     </span>
                   </div>
-                  
-                  <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
+                    <span className="text-sm font-medium text-gray-700">
                       Duty Statuses
                     </span>
-                    <span className="text-sm text-gray-900 dark:text-white">
+                    <span className="text-sm text-gray-900">
                       {routeData.duty_statuses?.length || 0} segments
                     </span>
                   </div>
-                  
-                  <div className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-900/20 rounded-md">
-                    <span className="text-sm font-medium text-green-700 dark:text-green-300">
+                  <div className="flex justify-between items-center p-3 bg-green-50 rounded-md">
+                    <span className="text-sm font-medium text-green-700">
                       HOS Compliance
                     </span>
-                    <span className="text-sm text-green-800 dark:text-green-400 font-semibold">
+                    <span className="text-sm text-green-800 font-semibold">
                       ✓ Compliant
                     </span>
                   </div>
@@ -362,32 +550,34 @@ const CreateTripPage: React.FC = () => {
             </motion.div>
           )}
         </div>
-
-        {/* Map Placeholder */}
         <div className="space-y-6">
           <Card className="p-6 h-96 lg:h-[600px]">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <MapPin className="w-5 h-5 mr-2" />
               Route Map
             </h3>
-            
-            <div className="w-full h-full bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-              <div className="text-center">
-                <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500 dark:text-gray-400 mb-2">
-                  Interactive Map
-                </p>
-                <p className="text-sm text-gray-400 dark:text-gray-500">
-                  {routeCalculated 
-                    ? 'Route displayed with pickup, dropoff, and rest stops'
-                    : 'Enter locations and calculate route to view map'
-                  }
-                </p>
-              </div>
-            </div>
+            <MapContainer
+              center={[37.5407, -77.436]}
+              zoom={10}
+              style={{ height: "100%", width: "100%" }}
+              ref={mapRef}
+            >
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              />
+              {activeField && <MapClickHandler field={activeField} />}
+              {currentCoords && (
+                <Marker position={[currentCoords[1], currentCoords[0]]} />
+              )}
+              {pickupCoords && (
+                <Marker position={[pickupCoords[1], pickupCoords[0]]} />
+              )}
+              {dropoffCoords && (
+                <Marker position={[dropoffCoords[1], dropoffCoords[0]]} />
+              )}
+            </MapContainer>
           </Card>
-
-          {/* HOS Timeline Preview */}
           {routeCalculated && routeData?.duty_statuses && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -395,34 +585,48 @@ const CreateTripPage: React.FC = () => {
               transition={{ duration: 0.6, delay: 0.2 }}
             >
               <Card className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                   <Clock className="w-5 h-5 mr-2" />
                   Duty Status Timeline
                 </h3>
-                
                 <div className="space-y-3">
-                  {routeData.duty_statuses.map((status: any, index: number) => (
-                    <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
-                      <div className={`w-3 h-3 rounded-full ${
-                        status.status === 'DRIVING' ? 'bg-green-500' :
-                        status.status === 'ON_DUTY_NOT_DRIVING' ? 'bg-blue-500' :
-                        status.status === 'OFF_DUTY' ? 'bg-red-500' : 'bg-yellow-500'
-                      }`}></div>
-                      <div className="flex-1">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">
-                            {status.status.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (l: string) => l.toUpperCase())}
-                          </span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            {new Date(status.start_time).toLocaleTimeString()} - {new Date(status.end_time).toLocaleTimeString()}
-                          </span>
+                  {routeData.duty_statuses.map(
+                    (status: DutyStatus, index: number) => (
+                      <div
+                        key={index}
+                        className="flex items-center space-x-3 p-3 bg-gray-50 rounded-md"
+                      >
+                        <div
+                          className={`w-3 h-3 rounded-full ${
+                            status.status === "DRIVING"
+                              ? "bg-green-500"
+                              : status.status === "ON_DUTY_NOT_DRIVING"
+                              ? "bg-blue-500"
+                              : status.status === "OFF_DUTY"
+                              ? "bg-red-500"
+                              : "bg-yellow-500"
+                          }`}
+                        />
+                        <div className="flex-1">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium text-gray-900">
+                              {status.status
+                                .replace(/_/g, " ")
+                                .toLowerCase()
+                                .replace(/\b\w/g, (l) => l.toUpperCase())}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {new Date(status.start_time).toLocaleTimeString()}{" "}
+                              - {new Date(status.end_time).toLocaleTimeString()}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-600">
+                            {status.location_description}
+                          </p>
                         </div>
-                        <p className="text-xs text-gray-600 dark:text-gray-400">
-                          {status.location_description}
-                        </p>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  )}
                 </div>
               </Card>
             </motion.div>

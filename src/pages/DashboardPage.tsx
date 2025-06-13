@@ -1,71 +1,82 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { 
-  Plus, 
-  MapPin, 
-  Clock, 
-  CheckCircle, 
-  Truck, 
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  Plus,
+  MapPin,
+  Clock,
+  CheckCircle,
+  Truck,
   Calendar,
   Eye,
   Play,
   Trash2,
   Filter,
-  Search
-} from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { useTrips, useUpdateTrip, useDeleteTrip } from '../hooks/useTrips';
-import Button from '../components/UI/Button';
-import Card from '../components/UI/Card';
-import Input from '../components/UI/Input';
-import Modal from '../components/UI/Modal';
+  Search,
+  Building,
+} from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { useTrips, useUpdateTrip, useDeleteTrip } from "../hooks/useTrips";
+import { useVehicles } from "../hooks/useVehicles";
+import Button from "../components/UI/Button";
+import Card from "../components/UI/Card";
+import Input from "../components/UI/Input";
+import Modal from "../components/UI/Modal";
 
 const DashboardPage: React.FC = () => {
-  const { user } = useAuth();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
+  const { user, isAdmin } = useAuth();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [vehicleFilter, setVehicleFilter] = useState("ALL");
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [tripToDelete, setTripToDelete] = useState<number | null>(null);
 
-  // API hooks
-  const { data: trips = [], isLoading, error } = useTrips();
-  const updateTripMutation = useUpdateTrip();
-  const deleteTripMutation = useDeleteTrip();
-
-  // Calculate summary stats from real data
-  const plannedTrips = trips.filter(trip => trip.status === 'PLANNED');
-  const inProgressTrips = trips.filter(trip => trip.status === 'IN_PROGRESS');
-  const completedTrips = trips.filter(trip => trip.status === 'COMPLETED');
-  const totalCycleHours = trips.length > 0 
-    ? trips.reduce((sum, trip) => sum + trip.current_cycle_hours, 0) / trips.length 
-    : 0;
-
-  // Filter trips based on search and status
-  const filteredTrips = trips.filter(trip => {
-    const matchesSearch = 
-      formatLocation(trip.pickup_location).toLowerCase().includes(searchTerm.toLowerCase()) ||
-      formatLocation(trip.dropoff_location).toLowerCase().includes(searchTerm.toLowerCase()) ||
-      trip.vehicle.vehicle_number.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'ALL' || trip.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
   const formatLocation = (location: [number, number]) => {
-    // In a real app, you'd reverse geocode this or store city names
     return `${location[1].toFixed(4)}, ${location[0].toFixed(4)}`;
   };
 
+  const { data: trips = [], isLoading, error } = useTrips();
+  const { data: vehicles = [] } = useVehicles();
+  const updateTripMutation = useUpdateTrip();
+  const deleteTripMutation = useDeleteTrip();
+
+  const plannedTrips = trips.filter((trip) => trip.status === "PLANNED");
+  const inProgressTrips = trips.filter((trip) => trip.status === "IN_PROGRESS");
+  const completedTrips = trips.filter((trip) => trip.status === "COMPLETED");
+  const totalCycleHours =
+    trips.length > 0
+      ? trips.reduce((sum, trip) => sum + trip.current_cycle_hours, 0) /
+        trips.length
+      : 0;
+
+  const filteredTrips = trips.filter((trip) => {
+    const matchesSearch =
+      formatLocation(trip.pickup_location)
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      formatLocation(trip.dropoff_location)
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      trip.vehicle.vehicle_number
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
+    const matchesStatus =
+      statusFilter === "ALL" || trip.status === statusFilter;
+    const matchesVehicle =
+      vehicleFilter === "ALL" || trip.vehicle.id.toString() === vehicleFilter;
+    return matchesSearch && matchesStatus && matchesVehicle;
+  });
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'PLANNED':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400';
-      case 'IN_PROGRESS':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
-      case 'COMPLETED':
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+      case "PLANNED":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400";
+      case "IN_PROGRESS":
+        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400";
+      case "COMPLETED":
+        return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
       default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+        return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
     }
   };
 
@@ -73,22 +84,22 @@ const DashboardPage: React.FC = () => {
     try {
       await updateTripMutation.mutateAsync({
         id: tripId,
-        updates: { status: 'IN_PROGRESS' }
+        updates: { status: "IN_PROGRESS" },
       });
     } catch (error) {
-      console.error('Failed to start trip:', error);
+      console.error("Failed to start trip:", error);
     }
   };
 
   const handleDeleteTrip = async () => {
     if (!tripToDelete) return;
-    
+
     try {
       await deleteTripMutation.mutateAsync(tripToDelete);
       setDeleteModalOpen(false);
       setTripToDelete(null);
     } catch (error) {
-      console.error('Failed to delete trip:', error);
+      console.error("Failed to delete trip:", error);
     }
   };
 
@@ -101,9 +112,11 @@ const DashboardPage: React.FC = () => {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Error Loading Dashboard</h1>
+          <h1 className="text-2xl font-bold text-red-600 mb-4">
+            Error Loading Dashboard
+          </h1>
           <p className="text-gray-600 dark:text-gray-300">
-            {error instanceof Error ? error.message : 'Failed to load trips'}
+            {error instanceof Error ? error.message : "Failed to load trips"}
           </p>
         </div>
       </div>
@@ -122,12 +135,40 @@ const DashboardPage: React.FC = () => {
             Manage your trips and monitor HOS compliance
           </p>
         </div>
-        <Link to="/trips/create">
-          <Button className="mt-4 sm:mt-0" size="lg">
-            <Plus className="w-5 h-5 mr-2" />
-            Create Trip
-          </Button>
-        </Link>
+        <div className="flex flex-col sm:flex-row gap-3 mt-4 sm:mt-0">
+          <Link to="/trips/create">
+            <Button className="w-full sm:w-auto" size="lg">
+              <Plus className="w-5 h-5 mr-2" />
+              Create Trip
+            </Button>
+          </Link>
+
+          {/* Admin Quick Actions */}
+          {isAdmin && (
+            <div className="flex gap-2">
+              <Link to="/vehicles/add">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="w-full sm:w-auto"
+                >
+                  <Truck className="w-4 h-4 mr-2" />
+                  Add Vehicle
+                </Button>
+              </Link>
+              <Link to="/carriers/add">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="w-full sm:w-auto"
+                >
+                  <Building className="w-4 h-4 mr-2" />
+                  Add Carrier
+                </Button>
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Loading State */}
@@ -162,8 +203,12 @@ const DashboardPage: React.FC = () => {
                     </div>
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Planned Trips</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{plannedTrips.length}</p>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Planned Trips
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {plannedTrips.length}
+                    </p>
                   </div>
                 </div>
               </Card>
@@ -182,8 +227,12 @@ const DashboardPage: React.FC = () => {
                     </div>
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">In Progress</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{inProgressTrips.length}</p>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      In Progress
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {inProgressTrips.length}
+                    </p>
                   </div>
                 </div>
               </Card>
@@ -202,8 +251,12 @@ const DashboardPage: React.FC = () => {
                     </div>
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Completed</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{completedTrips.length}</p>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Completed
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {completedTrips.length}
+                    </p>
                   </div>
                 </div>
               </Card>
@@ -222,7 +275,9 @@ const DashboardPage: React.FC = () => {
                     </div>
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Avg Cycle Hours</p>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Avg Cycle Hours
+                    </p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">
                       {totalCycleHours.toFixed(1)}/70
                     </p>
@@ -234,7 +289,7 @@ const DashboardPage: React.FC = () => {
 
           {/* Filters */}
           <Card className="p-6 mb-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0 sm:space-x-4">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 lg:space-x-4">
               <div className="flex-1 max-w-md">
                 <Input
                   placeholder="Search trips..."
@@ -243,18 +298,36 @@ const DashboardPage: React.FC = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <div className="flex items-center space-x-2">
-                <Filter className="w-4 h-4 text-gray-500" />
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-teal-500 focus:ring-teal-500 dark:bg-gray-700 dark:text-white"
-                >
-                  <option value="ALL">All Status</option>
-                  <option value="PLANNED">Planned</option>
-                  <option value="IN_PROGRESS">In Progress</option>
-                  <option value="COMPLETED">Completed</option>
-                </select>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                <div className="flex items-center space-x-2">
+                  <Filter className="w-4 h-4 text-gray-500" />
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-teal-500 focus:ring-teal-500 dark:bg-gray-700 dark:text-white text-sm"
+                  >
+                    <option value="ALL">All Status</option>
+                    <option value="PLANNED">Planned</option>
+                    <option value="IN_PROGRESS">In Progress</option>
+                    <option value="COMPLETED">Completed</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Truck className="w-4 h-4 text-gray-500" />
+                  <select
+                    value={vehicleFilter}
+                    onChange={(e) => setVehicleFilter(e.target.value)}
+                    className="rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-teal-500 focus:ring-teal-500 dark:bg-gray-700 dark:text-white text-sm"
+                  >
+                    <option value="ALL">All Vehicles</option>
+                    {vehicles.map((vehicle) => (
+                      <option key={vehicle.id} value={vehicle.id.toString()}>
+                        {vehicle.vehicle_number} ({vehicle.license_plate})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
           </Card>
@@ -274,10 +347,11 @@ const DashboardPage: React.FC = () => {
                   No trips found
                 </h3>
                 <p className="text-gray-500 dark:text-gray-400 mb-4">
-                  {searchTerm || statusFilter !== 'ALL' 
-                    ? 'Try adjusting your search or filter criteria.'
-                    : 'Get started by creating your first trip.'
-                  }
+                  {searchTerm ||
+                  statusFilter !== "ALL" ||
+                  vehicleFilter !== "ALL"
+                    ? "Try adjusting your search or filter criteria."
+                    : "Get started by creating your first trip."}
                 </p>
                 <Link to="/trips/create">
                   <Button>
@@ -322,7 +396,8 @@ const DashboardPage: React.FC = () => {
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {formatLocation(trip.pickup_location)} → {formatLocation(trip.dropoff_location)}
+                            {trip.pickup_location_name.slice(0, 19)}... →{" "}
+                            {trip.dropoff_location_name.slice(0, 19)}...
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -334,8 +409,12 @@ const DashboardPage: React.FC = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(trip.status)}`}>
-                            {trip.status.replace('_', ' ')}
+                          <span
+                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
+                              trip.status
+                            )}`}
+                          >
+                            {trip.status.replace("_", " ")}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
@@ -358,7 +437,7 @@ const DashboardPage: React.FC = () => {
                             >
                               <Eye className="w-4 h-4" />
                             </Link>
-                            {trip.status === 'PLANNED' && (
+                            {trip.status === "PLANNED" && (
                               <button
                                 onClick={() => handleStartTrip(trip.id)}
                                 disabled={updateTripMutation.isLoading}
@@ -393,7 +472,8 @@ const DashboardPage: React.FC = () => {
       >
         <div className="space-y-4">
           <p className="text-gray-600 dark:text-gray-300">
-            Are you sure you want to delete this trip? This action cannot be undone.
+            Are you sure you want to delete this trip? This action cannot be
+            undone.
           </p>
           <div className="flex justify-end space-x-3">
             <Button

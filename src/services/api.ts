@@ -1,7 +1,8 @@
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
 
 // API Base Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 // Create axios instance
 const api = axios.create({
@@ -9,7 +10,6 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  withCredentials: true,
 });
 
 // Request interceptor to add auth token
@@ -39,7 +39,6 @@ api.interceptors.response.use(
     if (isAuthEndpoint) {
       return Promise.reject(error);
     }
-
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
@@ -60,12 +59,11 @@ api.interceptors.response.use(
           originalRequest.headers.Authorization = `Bearer ${access}`;
           return api(originalRequest);
         } catch (refreshError) {
-          console.log({ refreshError });
           // Refresh failed, redirect to login
           localStorage.removeItem("access_token");
           localStorage.removeItem("refresh_token");
           localStorage.removeItem("user");
-          // window.location.href = "/login";
+          window.location.href = "/login";
           return Promise.reject(refreshError);
         }
       } else {
@@ -85,7 +83,7 @@ export interface User {
   email: string;
   first_name: string;
   last_name: string;
-  is_admin?: boolean;
+  has_driver?: boolean;
 }
 
 export interface Driver {
@@ -108,8 +106,11 @@ export interface Trip {
   driver: Driver;
   vehicle: Vehicle;
   current_location: [number, number];
+  current_location_name: [number, number];
   pickup_location: [number, number];
+  pickup_location_name: [number, number];
   dropoff_location: [number, number];
+  dropoff_location_name: [number, number];
   current_cycle_hours: number;
   start_time: string;
   status: "PLANNED" | "IN_PROGRESS" | "COMPLETED";
@@ -159,7 +160,6 @@ export const authAPI = {
     password: string
   ): Promise<{ access: string; refresh: string }> => {
     const response = await api.post("/api/auth/login/", { username, password });
-    console.log({ response });
     return response.data;
   },
 
@@ -192,10 +192,7 @@ export const tripsAPI = {
     limit?: number;
     offset?: number;
   }): Promise<Trip[]> => {
-    const response = await api.get("/api/trips/", {
-      params,
-      // Removed manual Authorization header; interceptor will handle it
-    });
+    const response = await api.get("/api/trips/", { params });
     return response.data;
   },
 

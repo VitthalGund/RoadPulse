@@ -1,12 +1,12 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { 
-  MapPin, 
-  Clock, 
-  FileText, 
-  Shield, 
-  Users, 
+import React from "react";
+import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  MapPin,
+  Clock,
+  FileText,
+  Shield,
+  Users,
   CheckCircle,
   Star,
   ArrowRight,
@@ -14,40 +14,45 @@ import {
   Navigation,
   Award,
   Zap,
-  Plus
-} from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { useTrips } from '../hooks/useTrips';
-import Button from '../components/UI/Button';
-import Card from '../components/UI/Card';
+  Plus,
+} from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { useTrips } from "../hooks/useTrips";
+import Button from "../components/UI/Button";
+import Card from "../components/UI/Card";
 
 const HomePage: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
   const { data: trips = [], isLoading } = useTrips();
 
   // Calculate stats from real API data
-  const plannedTrips = trips.filter(trip => trip.status === 'PLANNED');
-  const inProgressTrips = trips.filter(trip => trip.status === 'IN_PROGRESS');
-  const completedTrips = trips.filter(trip => trip.status === 'COMPLETED');
-  const avgCycleHours = trips.length > 0 
-    ? trips.reduce((sum, trip) => sum + trip.current_cycle_hours, 0) / trips.length 
-    : 0;
+  const plannedTrips = trips.filter((trip) => trip.status === "PLANNED");
+  const inProgressTrips = trips.filter((trip) => trip.status === "IN_PROGRESS");
+  const completedTrips = trips.filter((trip) => trip.status === "COMPLETED");
+  const avgCycleHours =
+    trips.length > 0
+      ? trips.reduce((sum, trip) => sum + trip.current_cycle_hours, 0) /
+        trips.length
+      : 0;
 
   // Get recent trips (latest 3)
   const recentTrips = trips
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )
     .slice(0, 3);
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'PLANNED':
-        return 'bg-blue-500';
-      case 'IN_PROGRESS':
-        return 'bg-green-500';
-      case 'COMPLETED':
-        return 'bg-gray-500';
+      case "PLANNED":
+        return "bg-blue-500";
+      case "IN_PROGRESS":
+        return "bg-green-500";
+      case "COMPLETED":
+        return "bg-gray-500";
       default:
-        return 'bg-gray-500';
+        return "bg-gray-500";
     }
   };
 
@@ -59,7 +64,6 @@ const HomePage: React.FC = () => {
   if (isAuthenticated) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white font-poppins">
             Welcome back, {user?.first_name || user?.username}!
@@ -69,7 +73,6 @@ const HomePage: React.FC = () => {
           </p>
         </div>
 
-        {/* Loading State */}
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {[...Array(4)].map((_, i) => (
@@ -86,7 +89,6 @@ const HomePage: React.FC = () => {
           </div>
         ) : (
           <>
-            {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <Card className="p-6" hover>
                 <div className="flex items-center">
@@ -96,8 +98,12 @@ const HomePage: React.FC = () => {
                     </div>
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Planned Trips</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{plannedTrips.length}</p>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Planned Trips
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {plannedTrips.length}
+                    </p>
                   </div>
                 </div>
               </Card>
@@ -110,8 +116,12 @@ const HomePage: React.FC = () => {
                     </div>
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">In Progress</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{inProgressTrips.length}</p>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      In Progress
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {inProgressTrips.length}
+                    </p>
                   </div>
                 </div>
               </Card>
@@ -124,8 +134,12 @@ const HomePage: React.FC = () => {
                     </div>
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Completed</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{completedTrips.length}</p>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Completed
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {completedTrips.length}
+                    </p>
                   </div>
                 </div>
               </Card>
@@ -138,7 +152,9 @@ const HomePage: React.FC = () => {
                     </div>
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Avg Cycle Hours</p>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Avg Cycle Hours
+                    </p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">
                       {avgCycleHours.toFixed(1)}/70
                     </p>
@@ -147,23 +163,26 @@ const HomePage: React.FC = () => {
               </Card>
             </div>
 
-            {/* Recent Trips and Quick Actions */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <Card className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Recent Trips</h2>
-                  <Link 
-                    to="/dashboard" 
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                    Recent Trips
+                  </h2>
+                  <Link
+                    to="/dashboard"
                     className="text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 text-sm font-medium"
                   >
                     View all
                   </Link>
                 </div>
-                
+
                 {recentTrips.length === 0 ? (
                   <div className="text-center py-8">
                     <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500 dark:text-gray-400 mb-4">No trips yet</p>
+                    <p className="text-gray-500 dark:text-gray-400 mb-4">
+                      No trips yet
+                    </p>
                     <Link to="/trips/create">
                       <Button size="sm">
                         <Plus className="w-4 h-4 mr-2" />
@@ -174,15 +193,24 @@ const HomePage: React.FC = () => {
                 ) : (
                   <div className="space-y-4">
                     {recentTrips.map((trip) => (
-                      <div key={trip.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
+                      <div
+                        key={trip.id}
+                        className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-md"
+                      >
                         <div className="flex items-center space-x-3">
-                          <div className={`w-2 h-2 rounded-full ${getStatusColor(trip.status)}`} />
+                          <div
+                            className={`w-2 h-2 rounded-full ${getStatusColor(
+                              trip.status
+                            )}`}
+                          />
                           <div>
                             <p className="text-sm font-medium text-gray-900 dark:text-white">
-                              {formatLocation(trip.pickup_location)} → {formatLocation(trip.dropoff_location)}
+                              {formatLocation(trip.pickup_location)} →{" "}
+                              {formatLocation(trip.dropoff_location)}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400">
-                              {trip.vehicle.vehicle_number} • {new Date(trip.start_time).toLocaleDateString()}
+                              {trip.vehicle.vehicle_number} •{" "}
+                              {new Date(trip.start_time).toLocaleDateString()}
                             </p>
                           </div>
                         </div>
@@ -198,9 +226,10 @@ const HomePage: React.FC = () => {
                 )}
               </Card>
 
-              {/* Quick Actions */}
               <Card className="p-6">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                  Quick Actions
+                </h2>
                 <div className="space-y-3">
                   <Link to="/trips/create">
                     <Button className="w-full justify-between">
@@ -209,14 +238,20 @@ const HomePage: React.FC = () => {
                     </Button>
                   </Link>
                   <Link to="/dashboard">
-                    <Button variant="outline" className="w-full justify-between">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-between"
+                    >
                       View All Trips
                       <ArrowRight className="w-4 h-4" />
                     </Button>
                   </Link>
                   {recentTrips.length > 0 && (
                     <Link to={`/eld-logs/${recentTrips[0].id}`}>
-                      <Button variant="secondary" className="w-full justify-between">
+                      <Button
+                        variant="secondary"
+                        className="w-full justify-between"
+                      >
                         Generate ELD Log
                         <ArrowRight className="w-4 h-4" />
                       </Button>
@@ -233,42 +268,42 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen">
-      {/* Enhanced Hero Section */}
       <section className="relative bg-gradient-to-br from-navy-600 via-navy-700 to-navy-800 dark:from-gray-900 dark:via-gray-800 dark:to-black text-white overflow-hidden">
-        {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          }} />
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+            }}
+          />
         </div>
 
-        {/* Floating Elements */}
         <div className="absolute inset-0 overflow-hidden">
           <motion.div
-            animate={{ 
+            animate={{
               y: [0, -20, 0],
-              rotate: [0, 5, 0]
+              rotate: [0, 5, 0],
             }}
-            transition={{ 
+            transition={{
               duration: 6,
               repeat: Infinity,
-              ease: "easeInOut"
+              ease: "easeInOut",
             }}
             className="absolute top-20 left-10 text-teal-400/20"
           >
             <Navigation className="w-16 h-16" />
           </motion.div>
-          
+
           <motion.div
-            animate={{ 
+            animate={{
               y: [0, 15, 0],
-              rotate: [0, -3, 0]
+              rotate: [0, -3, 0],
             }}
-            transition={{ 
+            transition={{
               duration: 8,
               repeat: Infinity,
               ease: "easeInOut",
-              delay: 2
+              delay: 2,
             }}
             className="absolute top-40 right-20 text-teal-400/20"
           >
@@ -276,15 +311,15 @@ const HomePage: React.FC = () => {
           </motion.div>
 
           <motion.div
-            animate={{ 
+            animate={{
               y: [0, -10, 0],
-              x: [0, 5, 0]
+              x: [0, 5, 0],
             }}
-            transition={{ 
+            transition={{
               duration: 7,
               repeat: Infinity,
               ease: "easeInOut",
-              delay: 1
+              delay: 1,
             }}
             className="absolute bottom-32 left-20 text-teal-400/20"
           >
@@ -294,9 +329,7 @@ const HomePage: React.FC = () => {
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            {/* Left Content */}
             <div className="text-center lg:text-left">
-              {/* Badge */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -307,14 +340,13 @@ const HomePage: React.FC = () => {
                 FMCSA Compliant Platform
               </motion.div>
 
-              {/* Main Headline */}
-              <motion.h1 
+              <motion.h1
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.1 }}
                 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold font-poppins mb-6 leading-tight"
               >
-                Simplify Your{' '}
+                Simplify Your{" "}
                 <span className="relative">
                   <span className="text-teal-400">Trucking</span>
                   <motion.div
@@ -323,26 +355,28 @@ const HomePage: React.FC = () => {
                     transition={{ duration: 0.8, delay: 0.8 }}
                     className="absolute bottom-2 left-0 right-0 h-2 bg-teal-400/30 -z-10"
                   />
-                </span>
-                {' '}with{' '}
+                </span>{" "}
+                with{" "}
                 <span className="bg-gradient-to-r from-teal-400 to-blue-400 bg-clip-text text-transparent">
                   RoadPulse
                 </span>
               </motion.h1>
 
-              {/* Subheadline */}
-              <motion.p 
+              <motion.p
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.3 }}
                 className="text-xl lg:text-2xl text-gray-300 mb-8 max-w-2xl leading-relaxed"
               >
-                Professional trip planning, Hours of Service compliance, and ELD log generation 
-                designed specifically for truck drivers who demand{' '}
-                <span className="text-teal-300 font-semibold">reliability and simplicity</span>.
+                Professional trip planning, Hours of Service compliance, and ELD
+                log generation designed specifically for truck drivers who
+                demand{" "}
+                <span className="text-teal-300 font-semibold">
+                  reliability and simplicity
+                </span>
+                .
               </motion.p>
 
-              {/* Feature Highlights */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -351,7 +385,9 @@ const HomePage: React.FC = () => {
               >
                 <div className="flex items-center text-gray-300">
                   <CheckCircle className="w-5 h-5 text-teal-400 mr-2" />
-                  <span className="text-sm font-medium">Smart Route Planning</span>
+                  <span className="text-sm font-medium">
+                    Smart Route Planning
+                  </span>
                 </div>
                 <div className="flex items-center text-gray-300">
                   <CheckCircle className="w-5 h-5 text-teal-400 mr-2" />
@@ -359,20 +395,21 @@ const HomePage: React.FC = () => {
                 </div>
                 <div className="flex items-center text-gray-300">
                   <CheckCircle className="w-5 h-5 text-teal-400 mr-2" />
-                  <span className="text-sm font-medium">ELD Log Generation</span>
+                  <span className="text-sm font-medium">
+                    ELD Log Generation
+                  </span>
                 </div>
               </motion.div>
 
-              {/* CTA Buttons */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.5 }}
                 className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start"
               >
                 <Link to="/register">
-                  <Button 
-                    size="lg" 
+                  <Button
+                    size="lg"
                     className="w-full sm:w-auto text-lg px-8 py-4 bg-teal-600 hover:bg-teal-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
                   >
                     <Truck className="w-5 h-5 mr-2" />
@@ -380,9 +417,9 @@ const HomePage: React.FC = () => {
                   </Button>
                 </Link>
                 <Link to="/login">
-                  <Button 
-                    variant="outline" 
-                    size="lg" 
+                  <Button
+                    variant="outline"
+                    size="lg"
                     className="w-full sm:w-auto text-lg px-8 py-4 border-2 border-white/20 text-white hover:bg-white/10 hover:border-white/40 backdrop-blur-sm transition-all duration-200"
                   >
                     Driver Login
@@ -391,7 +428,6 @@ const HomePage: React.FC = () => {
                 </Link>
               </motion.div>
 
-              {/* Trust Indicators */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -400,20 +436,25 @@ const HomePage: React.FC = () => {
               >
                 <div className="text-center">
                   <div className="text-2xl font-bold text-teal-400">1,000+</div>
-                  <div className="text-xs text-gray-400 uppercase tracking-wide">Active Drivers</div>
+                  <div className="text-xs text-gray-400 uppercase tracking-wide">
+                    Active Drivers
+                  </div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-teal-400">50K+</div>
-                  <div className="text-xs text-gray-400 uppercase tracking-wide">Trips Planned</div>
+                  <div className="text-xs text-gray-400 uppercase tracking-wide">
+                    Trips Planned
+                  </div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-teal-400">99.9%</div>
-                  <div className="text-xs text-gray-400 uppercase tracking-wide">Uptime</div>
+                  <div className="text-xs text-gray-400 uppercase tracking-wide">
+                    Uptime
+                  </div>
                 </div>
               </motion.div>
             </div>
 
-            {/* Right Content - Enhanced Visual */}
             <div className="relative lg:ml-8">
               <motion.div
                 initial={{ opacity: 0, scale: 0.8, x: 50 }}
@@ -421,9 +462,8 @@ const HomePage: React.FC = () => {
                 transition={{ duration: 0.8, delay: 0.3 }}
                 className="relative"
               >
-                {/* Main Image */}
                 <div className="relative rounded-2xl overflow-hidden shadow-2xl transform rotate-2 hover:rotate-0 transition-transform duration-500">
-                  <img 
+                  <img
                     src="https://images.pexels.com/photos/1095814/pexels-photo-1095814.jpeg?auto=compress&cs=tinysrgb&w=1200"
                     alt="Professional truck driver planning route"
                     className="w-full h-96 lg:h-[500px] object-cover"
@@ -431,7 +471,6 @@ const HomePage: React.FC = () => {
                   <div className="absolute inset-0 bg-gradient-to-tr from-teal-600/30 to-blue-600/20"></div>
                 </div>
 
-                {/* Floating Cards */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -443,8 +482,12 @@ const HomePage: React.FC = () => {
                       <CheckCircle className="w-6 h-6 text-green-600" />
                     </div>
                     <div>
-                      <div className="text-sm font-semibold text-gray-900">HOS Compliant</div>
-                      <div className="text-xs text-gray-600">Route Verified</div>
+                      <div className="text-sm font-semibold text-gray-900">
+                        HOS Compliant
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        Route Verified
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -460,22 +503,28 @@ const HomePage: React.FC = () => {
                       <FileText className="w-6 h-6 text-teal-600" />
                     </div>
                     <div>
-                      <div className="text-sm font-semibold text-gray-900">ELD Ready</div>
-                      <div className="text-xs text-gray-600">Instant Generation</div>
+                      <div className="text-sm font-semibold text-gray-900">
+                        ELD Ready
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        Instant Generation
+                      </div>
                     </div>
                   </div>
                 </motion.div>
 
-                {/* Background Glow */}
                 <div className="absolute inset-0 -z-10 bg-gradient-to-r from-teal-400/20 to-blue-400/20 rounded-2xl blur-3xl transform scale-110"></div>
               </motion.div>
             </div>
           </div>
         </div>
 
-        {/* Bottom Wave */}
         <div className="absolute bottom-0 left-0 right-0">
-          <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg
+            viewBox="0 0 1440 120"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
             <path
               d="M0 120L60 105C120 90 240 60 360 45C480 30 600 30 720 37.5C840 45 960 60 1080 67.5C1200 75 1320 75 1380 75L1440 75V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z"
               fill="currentColor"
@@ -485,7 +534,6 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Features Section */}
       <section id="features" className="py-20 bg-white dark:bg-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -493,8 +541,8 @@ const HomePage: React.FC = () => {
               Everything You Need for Professional Trucking
             </h2>
             <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-              RoadPulse combines powerful trip planning, compliance tracking, and log generation 
-              in one easy-to-use platform built for drivers.
+              RoadPulse combines powerful trip planning, compliance tracking,
+              and log generation in one easy-to-use platform built for drivers.
             </p>
           </div>
 
@@ -513,8 +561,9 @@ const HomePage: React.FC = () => {
                   Smart Trip Planning
                 </h3>
                 <p className="text-gray-600 dark:text-gray-300">
-                  Interactive maps, route optimization, and HOS-compliant scheduling. 
-                  Plan your trips with confidence and arrive safely on time.
+                  Interactive maps, route optimization, and HOS-compliant
+                  scheduling. Plan your trips with confidence and arrive safely
+                  on time.
                 </p>
               </Card>
             </motion.div>
@@ -533,7 +582,7 @@ const HomePage: React.FC = () => {
                   HOS Compliance
                 </h3>
                 <p className="text-gray-600 dark:text-gray-300">
-                  Automatic Hours of Service tracking with real-time alerts. 
+                  Automatic Hours of Service tracking with real-time alerts.
                   Stay compliant with FMCSA regulations and avoid violations.
                 </p>
               </Card>
@@ -553,8 +602,8 @@ const HomePage: React.FC = () => {
                   ELD Log Generation
                 </h3>
                 <p className="text-gray-600 dark:text-gray-300">
-                  Generate accurate, printable ELD logs with the 24-hour graph grid. 
-                  Perfect for inspections and compliance documentation.
+                  Generate accurate, printable ELD logs with the 24-hour graph
+                  grid. Perfect for inspections and compliance documentation.
                 </p>
               </Card>
             </motion.div>
@@ -573,8 +622,8 @@ const HomePage: React.FC = () => {
                   FMCSA Compliant
                 </h3>
                 <p className="text-gray-600 dark:text-gray-300">
-                  Built to meet all Federal Motor Carrier Safety Administration requirements. 
-                  Trust in professional-grade compliance tools.
+                  Built to meet all Federal Motor Carrier Safety Administration
+                  requirements. Trust in professional-grade compliance tools.
                 </p>
               </Card>
             </motion.div>
@@ -593,8 +642,9 @@ const HomePage: React.FC = () => {
                   Driver-Friendly Design
                 </h3>
                 <p className="text-gray-600 dark:text-gray-300">
-                  Large buttons, night mode, and intuitive interface designed for use 
-                  in trucks. Easy to use whether you're tech-savvy or not.
+                  Large buttons, night mode, and intuitive interface designed
+                  for use in trucks. Easy to use whether you're tech-savvy or
+                  not.
                 </p>
               </Card>
             </motion.div>
@@ -613,8 +663,9 @@ const HomePage: React.FC = () => {
                   Always Free Core Features
                 </h3>
                 <p className="text-gray-600 dark:text-gray-300">
-                  Essential trip planning, HOS tracking, and ELD logs are always free. 
-                  No hidden fees or subscription traps for core functionality.
+                  Essential trip planning, HOS tracking, and ELD logs are always
+                  free. No hidden fees or subscription traps for core
+                  functionality.
                 </p>
               </Card>
             </motion.div>
@@ -622,7 +673,6 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Testimonials Section */}
       <section className="py-20 bg-gray-50 dark:bg-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -638,19 +688,26 @@ const HomePage: React.FC = () => {
             <Card className="p-8">
               <div className="flex items-center mb-4">
                 {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-5 h-5 text-yellow-400 fill-current" />
+                  <Star
+                    key={i}
+                    className="w-5 h-5 text-yellow-400 fill-current"
+                  />
                 ))}
               </div>
               <p className="text-gray-600 dark:text-gray-300 mb-6">
-                "RoadPulse has simplified my entire workflow. The HOS tracking is spot-on 
-                and the ELD logs print perfectly for inspections. Finally, a platform 
-                built by people who understand trucking."
+                "RoadPulse has simplified my entire workflow. The HOS tracking
+                is spot-on and the ELD logs print perfectly for inspections.
+                Finally, a platform built by people who understand trucking."
               </p>
               <div className="flex items-center">
                 <div className="w-10 h-10 bg-gray-300 rounded-full mr-4"></div>
                 <div>
-                  <p className="font-semibold text-gray-900 dark:text-white">Mike Rodriguez</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Owner-Operator, 15 years</p>
+                  <p className="font-semibold text-gray-900 dark:text-white">
+                    Mike Rodriguez
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Owner-Operator, 15 years
+                  </p>
                 </div>
               </div>
             </Card>
@@ -658,18 +715,26 @@ const HomePage: React.FC = () => {
             <Card className="p-8">
               <div className="flex items-center mb-4">
                 {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-5 h-5 text-yellow-400 fill-current" />
+                  <Star
+                    key={i}
+                    className="w-5 h-5 text-yellow-400 fill-current"
+                  />
                 ))}
               </div>
               <p className="text-gray-600 dark:text-gray-300 mb-6">
-                "Managing a fleet of 25 trucks is challenging, but RoadPulse makes it manageable. 
-                The compliance tracking gives me peace of mind, and my drivers love how easy it is to use."
+                "Managing a fleet of 25 trucks is challenging, but RoadPulse
+                makes it manageable. The compliance tracking gives me peace of
+                mind, and my drivers love how easy it is to use."
               </p>
               <div className="flex items-center">
                 <div className="w-10 h-10 bg-gray-300 rounded-full mr-4"></div>
                 <div>
-                  <p className="font-semibold text-gray-900 dark:text-white">Sarah Chen</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Fleet Manager, ABC Trucking</p>
+                  <p className="font-semibold text-gray-900 dark:text-white">
+                    Sarah Chen
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Fleet Manager, ABC Trucking
+                  </p>
                 </div>
               </div>
             </Card>
@@ -677,19 +742,26 @@ const HomePage: React.FC = () => {
             <Card className="p-8">
               <div className="flex items-center mb-4">
                 {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-5 h-5 text-yellow-400 fill-current" />
+                  <Star
+                    key={i}
+                    className="w-5 h-5 text-yellow-400 fill-current"
+                  />
                 ))}
               </div>
               <p className="text-gray-600 dark:text-gray-300 mb-6">
-                "I'm not the most tech-savvy, but RoadPulse is incredibly intuitive. 
-                The night mode is perfect for planning routes during rest breaks, 
-                and the support team is always helpful."
+                "I'm not the most tech-savvy, but RoadPulse is incredibly
+                intuitive. The night mode is perfect for planning routes during
+                rest breaks, and the support team is always helpful."
               </p>
               <div className="flex items-center">
                 <div className="w-10 h-10 bg-gray-300 rounded-full mr-4"></div>
                 <div>
-                  <p className="font-semibold text-gray-900 dark:text-white">James Wilson</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Long-haul Driver, 8 years</p>
+                  <p className="font-semibold text-gray-900 dark:text-white">
+                    James Wilson
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Long-haul Driver, 8 years
+                  </p>
                 </div>
               </div>
             </Card>
@@ -697,7 +769,6 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Trust Signals Section */}
       <section className="py-16 bg-white dark:bg-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="flex flex-col md:flex-row items-center justify-center space-y-8 md:space-y-0 md:space-x-12">
@@ -706,47 +777,67 @@ const HomePage: React.FC = () => {
                 <span className="text-white font-bold text-sm">FMCSA</span>
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-white">FMCSA Compliant</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Meets all federal requirements</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                  FMCSA Compliant
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Meets all federal requirements
+                </p>
               </div>
             </div>
-            
+
             <div className="text-center">
-              <p className="text-3xl font-bold text-teal-600 dark:text-teal-400">1,000+</p>
-              <p className="text-sm text-gray-600 dark:text-gray-300">Active Drivers</p>
+              <p className="text-3xl font-bold text-teal-600 dark:text-teal-400">
+                1,000+
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Active Drivers
+              </p>
             </div>
-            
+
             <div className="text-center">
-              <p className="text-3xl font-bold text-teal-600 dark:text-teal-400">50,000+</p>
-              <p className="text-sm text-gray-600 dark:text-gray-300">Trips Planned</p>
+              <p className="text-3xl font-bold text-teal-600 dark:text-teal-400">
+                50,000+
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Trips Planned
+              </p>
             </div>
-            
+
             <div className="text-center">
-              <p className="text-3xl font-bold text-teal-600 dark:text-teal-400">99.9%</p>
+              <p className="text-3xl font-bold text-teal-600 dark:text-teal-400">
+                99.9%
+              </p>
               <p className="text-sm text-gray-600 dark:text-gray-300">Uptime</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
       <section className="py-20 bg-teal-600 dark:bg-teal-700">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl md:text-4xl font-bold font-poppins text-white mb-6">
             Ready to Simplify Your Trucking Operations?
           </h2>
           <p className="text-xl text-teal-100 mb-8">
-            Join thousands of professional drivers who trust RoadPulse for their 
+            Join thousands of professional drivers who trust RoadPulse for their
             trip planning, compliance, and documentation needs.
           </p>
           <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
             <Link to="/register">
-              <Button size="lg" className="bg-white text-teal-600 hover:bg-gray-100 px-8 py-4 text-lg">
+              <Button
+                size="lg"
+                className="bg-white text-teal-600 hover:bg-gray-100 px-8 py-4 text-lg"
+              >
                 Start Free Today
               </Button>
             </Link>
             <Link to="/login">
-              <Button variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-teal-600 px-8 py-4 text-lg">
+              <Button
+                variant="outline"
+                size="lg"
+                className="border-white text-white hover:bg-white hover:text-teal-600 px-8 py-4 text-lg"
+              >
                 Driver Login
               </Button>
             </Link>

@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Truck, Menu, X, Moon, Sun, LogOut, User, Settings } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
-import { useTheme } from '../../contexts/ThemeContext';
+import React, { useState } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Truck, Menu, X, Moon, Sun, LogOut } from "lucide-react";
+import { useAuth } from "../../contexts/AuthContext";
+import { useTheme } from "../../contexts/ThemeContext";
 
 const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -13,15 +13,17 @@ const Navbar: React.FC = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/');
+    navigate("/");
     setIsMenuOpen(false);
   };
 
-  const navLinks = isAuthenticated ? [
-    { to: '/dashboard', label: 'Dashboard' },
-    { to: '/trips/create', label: 'Create Trip' },
-    ...(isAdmin ? [{ to: '/admin', label: 'Admin' }] : []),
-  ] : [];
+  const navLinks = isAuthenticated
+    ? [
+        { to: "/dashboard", label: "Dashboard" },
+        { to: "/trips/create", label: "Create Trip" },
+        ...(isAdmin ? [{ to: "/admin", label: "Admin" }] : []),
+      ]
+    : [];
 
   const isActivePath = (path: string) => location.pathname === path;
 
@@ -29,16 +31,14 @@ const Navbar: React.FC = () => {
     <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <Link 
-            to="/" 
+          <Link
+            to="/"
             className="flex items-center space-x-2 text-navy-600 dark:text-white hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
           >
             <Truck className="w-8 h-8" />
             <span className="text-xl font-bold font-poppins">RoadPulse</span>
           </Link>
 
-          {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
             {navLinks.map((link) => (
               <Link
@@ -46,24 +46,26 @@ const Navbar: React.FC = () => {
                 to={link.to}
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   isActivePath(link.to)
-                    ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/20'
-                    : 'text-gray-700 dark:text-gray-300 hover:text-teal-600 dark:hover:text-teal-400'
+                    ? "text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/20"
+                    : "text-gray-700 dark:text-gray-300 hover:text-teal-600 dark:hover:text-teal-400"
                 }`}
               >
                 {link.label}
               </Link>
             ))}
-            
-            {/* Theme Toggle */}
+
             <button
               onClick={toggleDarkMode}
               className="p-2 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
               aria-label="Toggle dark mode"
             >
-              {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              {isDarkMode ? (
+                <Sun className="w-5 h-5" />
+              ) : (
+                <Moon className="w-5 h-5" />
+              )}
             </button>
 
-            {/* Auth Buttons */}
             {isAuthenticated ? (
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-gray-700 dark:text-gray-300">
@@ -95,26 +97,32 @@ const Navbar: React.FC = () => {
             )}
           </div>
 
-          {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center space-x-2">
             <button
               onClick={toggleDarkMode}
               className="p-2 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
               aria-label="Toggle dark mode"
             >
-              {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              {isDarkMode ? (
+                <Sun className="w-5 h-5" />
+              ) : (
+                <Moon className="w-5 h-5" />
+              )}
             </button>
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="p-2 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
               aria-label="Toggle menu"
             >
-              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {isMenuOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
             </button>
           </div>
         </div>
 
-        {/* Mobile Menu */}
         {isMenuOpen && (
           <div className="md:hidden border-t border-gray-200 dark:border-gray-700 py-2">
             <div className="flex flex-col space-y-1">
@@ -125,14 +133,14 @@ const Navbar: React.FC = () => {
                   onClick={() => setIsMenuOpen(false)}
                   className={`px-3 py-2 rounded-md text-base font-medium transition-colors ${
                     isActivePath(link.to)
-                      ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/20'
-                      : 'text-gray-700 dark:text-gray-300 hover:text-teal-600 dark:hover:text-teal-400'
+                      ? "text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/20"
+                      : "text-gray-700 dark:text-gray-300 hover:text-teal-600 dark:hover:text-teal-400"
                   }`}
                 >
                   {link.label}
                 </Link>
               ))}
-              
+
               {isAuthenticated ? (
                 <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
                   <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">

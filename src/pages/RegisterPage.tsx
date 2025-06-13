@@ -1,22 +1,19 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { motion } from 'framer-motion';
-import { 
-  Truck, 
-  User, 
-  Mail, 
-  Lock, 
-  CreditCard, 
-  Building, 
-  MapPin,
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { motion } from "framer-motion";
+import {
+  Truck,
+  User,
+  CreditCard,
+  Building,
   AlertCircle,
-  CheckCircle 
-} from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import Button from '../components/UI/Button';
-import Input from '../components/UI/Input';
-import Card from '../components/UI/Card';
+  CheckCircle,
+} from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import Button from "../components/UI/Button";
+import Input from "../components/UI/Input";
+import Card from "../components/UI/Card";
 
 interface RegisterForm {
   username: string;
@@ -32,7 +29,7 @@ interface RegisterForm {
 
 const RegisterPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const { register: registerUser } = useAuth();
   const navigate = useNavigate();
 
@@ -43,33 +40,33 @@ const RegisterPage: React.FC = () => {
     formState: { errors },
   } = useForm<RegisterForm>();
 
-  const password = watch('password');
+  const password = watch("password");
 
   const onSubmit = async (data: RegisterForm) => {
     if (data.password !== data.confirmPassword) {
-      setError('Passwords do not match');
+      setError("Passwords do not match");
       return;
     }
 
     setLoading(true);
-    setError('');
-    
+    setError("");
+
     try {
       const { confirmPassword, ...registerData } = data;
       await registerUser(registerData);
-      navigate('/dashboard');
+      navigate("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
+      setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
       setLoading(false);
     }
   };
 
   const passwordRequirements = [
-    { text: 'At least 8 characters', met: password?.length >= 8 },
-    { text: 'Contains uppercase letter', met: /[A-Z]/.test(password || '') },
-    { text: 'Contains lowercase letter', met: /[a-z]/.test(password || '') },
-    { text: 'Contains number', met: /\d/.test(password || '') },
+    { text: "At least 8 characters", met: password?.length >= 8 },
+    { text: "Contains uppercase letter", met: /[A-Z]/.test(password || "") },
+    { text: "Contains lowercase letter", met: /[a-z]/.test(password || "") },
+    { text: "Contains number", met: /\d/.test(password || "") },
   ];
 
   return (
@@ -80,7 +77,6 @@ const RegisterPage: React.FC = () => {
         transition={{ duration: 0.6 }}
         className="max-w-2xl mx-auto"
       >
-        {/* Header */}
         <div className="text-center mb-8">
           <div className="flex justify-center">
             <div className="flex items-center space-x-2 text-teal-600">
@@ -104,12 +100,13 @@ const RegisterPage: React.FC = () => {
               className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md flex items-center space-x-2"
             >
               <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
-              <span className="text-sm text-red-600 dark:text-red-400">{error}</span>
+              <span className="text-sm text-red-600 dark:text-red-400">
+                {error}
+              </span>
             </motion.div>
           )}
 
           <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
-            {/* Account Information */}
             <div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center">
                 <User className="w-5 h-5 mr-2" />
@@ -121,15 +118,16 @@ const RegisterPage: React.FC = () => {
                   type="text"
                   placeholder="Choose a username"
                   error={errors.username?.message}
-                  {...register('username', {
-                    required: 'Username is required',
+                  {...register("username", {
+                    required: "Username is required",
                     minLength: {
                       value: 3,
-                      message: 'Username must be at least 3 characters',
+                      message: "Username must be at least 3 characters",
                     },
                     pattern: {
                       value: /^[a-zA-Z0-9_]+$/,
-                      message: 'Username can only contain letters, numbers, and underscores',
+                      message:
+                        "Username can only contain letters, numbers, and underscores",
                     },
                   })}
                 />
@@ -139,11 +137,11 @@ const RegisterPage: React.FC = () => {
                   type="email"
                   placeholder="your.email@example.com"
                   error={errors.email?.message}
-                  {...register('email', {
-                    required: 'Email is required',
+                  {...register("email", {
+                    required: "Email is required",
                     pattern: {
                       value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                      message: 'Please enter a valid email address',
+                      message: "Please enter a valid email address",
                     },
                   })}
                 />
@@ -156,24 +154,31 @@ const RegisterPage: React.FC = () => {
                     type="password"
                     placeholder="Create a strong password"
                     error={errors.password?.message}
-                    {...register('password', {
-                      required: 'Password is required',
+                    {...register("password", {
+                      required: "Password is required",
                       minLength: {
                         value: 8,
-                        message: 'Password must be at least 8 characters',
+                        message: "Password must be at least 8 characters",
                       },
                     })}
                   />
                   {password && (
                     <div className="mt-2 space-y-1">
                       {passwordRequirements.map((req, index) => (
-                        <div key={index} className="flex items-center space-x-2 text-xs">
+                        <div
+                          key={index}
+                          className="flex items-center space-x-2 text-xs"
+                        >
                           {req.met ? (
                             <CheckCircle className="w-3 h-3 text-green-500" />
                           ) : (
                             <div className="w-3 h-3 rounded-full border border-gray-300" />
                           )}
-                          <span className={req.met ? 'text-green-600' : 'text-gray-500'}>
+                          <span
+                            className={
+                              req.met ? "text-green-600" : "text-gray-500"
+                            }
+                          >
                             {req.text}
                           </span>
                         </div>
@@ -187,16 +192,15 @@ const RegisterPage: React.FC = () => {
                   type="password"
                   placeholder="Confirm your password"
                   error={errors.confirmPassword?.message}
-                  {...register('confirmPassword', {
-                    required: 'Please confirm your password',
+                  {...register("confirmPassword", {
+                    required: "Please confirm your password",
                     validate: (value) =>
-                      value === password || 'Passwords do not match',
+                      value === password || "Passwords do not match",
                   })}
                 />
               </div>
             </div>
 
-            {/* Personal Information */}
             <div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center">
                 <CreditCard className="w-5 h-5 mr-2" />
@@ -208,11 +212,11 @@ const RegisterPage: React.FC = () => {
                   type="text"
                   placeholder="John"
                   error={errors.first_name?.message}
-                  {...register('first_name', {
-                    required: 'First name is required',
+                  {...register("first_name", {
+                    required: "First name is required",
                     minLength: {
                       value: 2,
-                      message: 'First name must be at least 2 characters',
+                      message: "First name must be at least 2 characters",
                     },
                   })}
                 />
@@ -222,11 +226,11 @@ const RegisterPage: React.FC = () => {
                   type="text"
                   placeholder="Doe"
                   error={errors.last_name?.message}
-                  {...register('last_name', {
-                    required: 'Last name is required',
+                  {...register("last_name", {
+                    required: "Last name is required",
                     minLength: {
                       value: 2,
-                      message: 'Last name must be at least 2 characters',
+                      message: "Last name must be at least 2 characters",
                     },
                   })}
                 />
@@ -237,17 +241,16 @@ const RegisterPage: React.FC = () => {
                 type="text"
                 placeholder="DL123456789"
                 error={errors.license_number?.message}
-                {...register('license_number', {
-                  required: 'License number is required',
+                {...register("license_number", {
+                  required: "License number is required",
                   minLength: {
                     value: 8,
-                    message: 'License number must be at least 8 characters',
+                    message: "License number must be at least 8 characters",
                   },
                 })}
               />
             </div>
 
-            {/* Carrier Information */}
             <div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center">
                 <Building className="w-5 h-5 mr-2" />
@@ -258,11 +261,11 @@ const RegisterPage: React.FC = () => {
                 type="text"
                 placeholder="ABC Trucking Company"
                 error={errors.carrier_name?.message}
-                {...register('carrier_name', {
-                  required: 'Carrier name is required',
+                {...register("carrier_name", {
+                  required: "Carrier name is required",
                   minLength: {
                     value: 3,
-                    message: 'Carrier name must be at least 3 characters',
+                    message: "Carrier name must be at least 3 characters",
                   },
                 })}
               />
@@ -272,11 +275,11 @@ const RegisterPage: React.FC = () => {
                 type="text"
                 placeholder="123 Main St, Richmond, VA 23220"
                 error={errors.carrier_address?.message}
-                {...register('carrier_address', {
-                  required: 'Carrier address is required',
+                {...register("carrier_address", {
+                  required: "Carrier address is required",
                   minLength: {
                     value: 10,
-                    message: 'Please enter a complete address',
+                    message: "Please enter a complete address",
                   },
                 })}
               />
@@ -315,14 +318,19 @@ const RegisterPage: React.FC = () => {
           </div>
         </Card>
 
-        {/* Terms */}
         <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-          By creating an account, you agree to our{' '}
-          <Link to="/terms" className="text-teal-600 hover:text-teal-500 dark:text-teal-400 dark:hover:text-teal-300">
+          By creating an account, you agree to our{" "}
+          <Link
+            to="/terms"
+            className="text-teal-600 hover:text-teal-500 dark:text-teal-400 dark:hover:text-teal-300"
+          >
             Terms of Service
-          </Link>{' '}
-          and{' '}
-          <Link to="/privacy" className="text-teal-600 hover:text-teal-500 dark:text-teal-400 dark:hover:text-teal-300">
+          </Link>{" "}
+          and{" "}
+          <Link
+            to="/privacy"
+            className="text-teal-600 hover:text-teal-500 dark:text-teal-400 dark:hover:text-teal-300"
+          >
             Privacy Policy
           </Link>
         </div>

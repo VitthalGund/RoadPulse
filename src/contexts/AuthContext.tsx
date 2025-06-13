@@ -5,7 +5,7 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import { authAPI, User } from "../services/api";
+import api, { authAPI, User } from "../services/api";
 
 interface AuthContextType {
   user: User | null;
@@ -72,6 +72,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth();
   }, []);
 
+  const fetchUserInfo = async () => {
+    try {
+      const response = await api.get("/api/user-info/");
+
+      const userInfo = response.data;
+      const user: User = {
+        id: userInfo.user_id,
+        username: userInfo.username,
+        email: userInfo.email,
+        first_name: userInfo.first_name,
+        last_name: userInfo.last_name,
+        has_driver: userInfo.has_driver,
+      };
+
+      localStorage.setItem("user", JSON.stringify(user));
+      setUser(user);
+      return user;
+    } catch (error) {
+      console.error("Error fetching user info:", error);
+      throw error;
+    }
+  };
+
   const login = async (username: string, password: string) => {
     try {
       const response = await authAPI.login(username, password);
@@ -79,20 +102,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Store tokens
       localStorage.setItem("access_token", response.access);
       localStorage.setItem("refresh_token", response.refresh);
-
-      // Create user object from username (in real app, you'd get this from a profile API)
-      const mockUser: User = {
-        id: 1,
-        username,
-        email: `${username}@example.com`,
-        first_name: username === "admin" ? "Admin" : "John",
-        last_name: username === "admin" ? "User" : "Doe",
-        is_admin: username === "admin",
-      };
-
-      localStorage.setItem("user", JSON.stringify(mockUser));
       setToken(response.access);
-      setUser(mockUser);
+
+      // Fetch user info from API
+      await fetchUserInfo();
     } catch (error: any) {
       console.error("Login error:", error);
       const errorMessage =
@@ -110,20 +123,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Store tokens
       localStorage.setItem("access_token", response.access);
       localStorage.setItem("refresh_token", response.refresh);
-
-      // Create user object
-      const newUser: User = {
-        id: 1,
-        username: userData.username,
-        email: userData.email,
-        first_name: userData.first_name,
-        last_name: userData.last_name,
-        is_admin: false,
-      };
-
-      localStorage.setItem("user", JSON.stringify(newUser));
       setToken(response.access);
-      setUser(newUser);
+
+      // Fetch user info from API
+      await fetchUserInfo();
     } catch (error: any) {
       console.error("Registration error:", error);
       const errorMessage =
@@ -149,7 +152,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     logout,
     isAuthenticated: !!token && !!user,
-    isAdmin: user?.is_admin || false,
+    isAdmin: true,
     loading,
   };
 

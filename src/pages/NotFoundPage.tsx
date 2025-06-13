@@ -1,8 +1,8 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Home, ArrowLeft, Truck } from 'lucide-react';
-import Button from '../components/UI/Button';
+import React from "react";
+import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import { Home, ArrowLeft, Truck } from "lucide-react";
+import Button from "../components/UI/Button";
 
 const NotFoundPage: React.FC = () => {
   return (
@@ -13,18 +13,17 @@ const NotFoundPage: React.FC = () => {
         transition={{ duration: 0.6 }}
         className="max-w-md w-full text-center"
       >
-        {/* 404 Illustration */}
         <div className="mb-8">
           <div className="relative">
             <motion.div
-              animate={{ 
+              animate={{
                 x: [0, 10, 0],
-                rotate: [0, 5, 0]
+                rotate: [0, 5, 0],
               }}
-              transition={{ 
+              transition={{
                 duration: 3,
                 repeat: Infinity,
-                ease: "easeInOut"
+                ease: "easeInOut",
               }}
               className="text-teal-600 dark:text-teal-400"
             >
@@ -34,7 +33,6 @@ const NotFoundPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Error Message */}
         <div className="mb-8">
           <h1 className="text-6xl font-bold text-gray-900 dark:text-white font-poppins mb-4">
             404
@@ -43,12 +41,11 @@ const NotFoundPage: React.FC = () => {
             Route Not Found
           </h2>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Looks like this truck took a wrong turn! The page you're looking for 
+            Looks like this truck took a wrong turn! The page you're looking for
             doesn't exist or has been moved to a new location.
           </p>
         </div>
 
-        {/* Action Buttons */}
         <div className="space-y-4">
           <Link to="/" className="block">
             <Button className="w-full" size="lg">
@@ -56,8 +53,8 @@ const NotFoundPage: React.FC = () => {
               Back to Home
             </Button>
           </Link>
-          
-          <button 
+
+          <button
             onClick={() => window.history.back()}
             className="w-full flex items-center justify-center px-6 py-3 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
           >
@@ -66,10 +63,9 @@ const NotFoundPage: React.FC = () => {
           </button>
         </div>
 
-        {/* Help Text */}
         <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Need help? Contact our{' '}
+            Need help? Contact our{" "}
             <a
               href="mailto:support@roadpulse.com"
               className="text-teal-600 hover:text-teal-500 dark:text-teal-400 dark:hover:text-teal-300 font-medium"
