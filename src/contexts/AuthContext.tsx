@@ -5,7 +5,10 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import api, { authAPI, User } from "../services/api";
+import { authAPI, User } from "../services/api";
+
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 interface AuthContextType {
   user: User | null;
@@ -72,23 +75,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth();
   }, []);
 
-  const fetchUserInfo = async () => {
+  const fetchUserInfo = async (accessToken: string) => {
     try {
-      const response = await api.get("/api/user-info/");
+      const response = await fetch(`${API_BASE_URL}/api/user-info/`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-      const userInfo = response.data;
-      const user: User = {
-        id: userInfo.user_id,
-        username: userInfo.username,
-        email: userInfo.email,
-        first_name: userInfo.first_name,
-        last_name: userInfo.last_name,
-        has_driver: userInfo.has_driver,
-      };
+      if (response.ok) {
+        const userInfo = await response.json();
+        const user: User = {
+          id: userInfo.user_id,
+          username: userInfo.username,
+          email: userInfo.email,
+          first_name: userInfo.first_name,
+          last_name: userInfo.last_name,
+          is_admin: userInfo.is_admin,
+          has_driver: userInfo.has_driver,
+        };
 
-      localStorage.setItem("user", JSON.stringify(user));
-      setUser(user);
-      return user;
+        localStorage.setItem("user", JSON.stringify(user));
+        setUser(user);
+        return user;
+      } else {
+        throw new Error("Failed to fetch user info");
+      }
     } catch (error) {
       console.error("Error fetching user info:", error);
       throw error;
@@ -105,7 +118,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setToken(response.access);
 
       // Fetch user info from API
-      await fetchUserInfo();
+      await fetchUserInfo(response.access);
     } catch (error: any) {
       console.error("Login error:", error);
       const errorMessage =
@@ -126,7 +139,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setToken(response.access);
 
       // Fetch user info from API
-      await fetchUserInfo();
+      await fetchUserInfo(response.access);
     } catch (error: any) {
       console.error("Registration error:", error);
       const errorMessage =
@@ -152,7 +165,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     logout,
     isAuthenticated: !!token && !!user,
-    isAdmin: true,
+    isAdmin: user?.is_admin || false,
     loading,
   };
 

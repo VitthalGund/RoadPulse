@@ -7,96 +7,30 @@ import {
   ArrowLeft,
   Plus,
   Eye,
+  AlertCircle,
 } from "lucide-react";
 import Button from "../components/UI/Button";
 import Card from "../components/UI/Card";
 import Input from "../components/UI/Input";
-
-// Mock ELD logs data
-const mockELDLogs = [
-  {
-    id: 1,
-    date: "2025-01-15",
-    total_miles: 185.2,
-    created_at: "2025-01-15T18:30:00Z",
-  },
-  {
-    id: 2,
-    date: "2025-01-14",
-    total_miles: 220.5,
-    created_at: "2025-01-14T19:15:00Z",
-  },
-];
-
-// Mock duty statuses for ELD log rendering
-const mockDutyStatuses = [
-  {
-    status: "OFF_DUTY",
-    start_time: "2025-01-15T00:00:00Z",
-    end_time: "2025-01-15T08:00:00Z",
-    location_description: "Rest Area",
-  },
-  {
-    status: "ON_DUTY_NOT_DRIVING",
-    start_time: "2025-01-15T08:00:00Z",
-    end_time: "2025-01-15T09:00:00Z",
-    location_description: "Pickup - Richmond, VA",
-  },
-  {
-    status: "DRIVING",
-    start_time: "2025-01-15T09:00:00Z",
-    end_time: "2025-01-15T11:30:00Z",
-    location_description: "En route",
-  },
-  {
-    status: "OFF_DUTY",
-    start_time: "2025-01-15T11:30:00Z",
-    end_time: "2025-01-15T12:00:00Z",
-    location_description: "Rest Break",
-  },
-  {
-    status: "DRIVING",
-    start_time: "2025-01-15T12:00:00Z",
-    end_time: "2025-01-15T13:15:00Z",
-    location_description: "En route",
-  },
-  {
-    status: "ON_DUTY_NOT_DRIVING",
-    start_time: "2025-01-15T13:15:00Z",
-    end_time: "2025-01-15T14:00:00Z",
-    location_description: "Dropoff - Norfolk, VA",
-  },
-  {
-    status: "OFF_DUTY",
-    start_time: "2025-01-15T14:00:00Z",
-    end_time: "2025-01-15T24:00:00Z",
-    location_description: "End of duty",
-  },
-];
+import { useELDLogs } from "../hooks/useELDLogs";
+import { motion } from "framer-motion";
 
 const ELDLogsPage: React.FC = () => {
-  const { tripId } = useParams();
+  const { tripId } = useParams<{ tripId: string }>();
   const [selectedDate, setSelectedDate] = useState("");
   const [viewingLog, setViewingLog] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+  const [remarks, setRemarks] = useState<{ [logId: number]: string }>({});
+  const [error, setError] = useState<string>("");
 
-  const generateLog = async () => {
-    if (!selectedDate) return;
-
-    setLoading(true);
-    // Mock API call
-    setTimeout(() => {
-      const newLog = {
-        id: mockELDLogs.length + 1,
-        date: selectedDate,
-        total_miles: 185.2,
-        created_at: new Date().toISOString(),
-        duty_statuses: mockDutyStatuses,
-      };
-      setViewingLog(newLog);
-      setLoading(false);
-    }, 1500);
-  };
+  const {
+    eldLogs,
+    eldLogLoading,
+    eldLogError,
+    dutyStatuses,
+    dutyStatusLoading,
+    dutyStatusError,
+    generateELDLog,
+  } = useELDLogs(tripId!);
 
   const getDutyStatusColor = (status: string) => {
     switch (status) {
@@ -118,6 +52,48 @@ const ELDLogsPage: React.FC = () => {
       .replace(/_/g, " ")
       .toLowerCase()
       .replace(/\b\w/g, (l) => l.toUpperCase());
+  };
+
+  const generateLog = async () => {
+    if (!selectedDate) {
+      setError("Please select a date.");
+      return;
+    }
+
+    try {
+      setError("");
+      await generateELDLog.mutateAsync({ date: selectedDate });
+      const newLog = eldLogs?.find((log) => log.date === selectedDate) || {
+        id: (eldLogs?.length || 0) + 1,
+        date: selectedDate,
+        total_miles: 185.2,
+        timestamp: new Date().toISOString(),
+      };
+      setViewingLog({
+        ...newLog,
+        duty_statuses: dutyStatuses?.filter(
+          (status) =>
+            new Date(status.start_time).toISOString().split("T")[0] ===
+            selectedDate
+        ),
+      });
+    } catch (err) {
+      setError("Failed to generate ELD log: " + (err as Error).message);
+    }
+  };
+
+  const handleViewLog = (log: any) => {
+    setViewingLog({
+      ...log,
+      duty_statuses: dutyStatuses?.filter(
+        (status) =>
+          new Date(status.start_time).toISOString().split("T")[0] === log.date
+      ),
+    });
+  };
+
+  const handleRemarkChange = (logId: number, value: string) => {
+    setRemarks((prev) => ({ ...prev, [logId]: value }));
   };
 
   const renderELDGrid = () => {
@@ -179,8 +155,31 @@ const ELDLogsPage: React.FC = () => {
     );
   };
 
+  if (eldLogLoading || dutyStatusLoading) {
+    return <div className="text-center py-12">Loading...</div>;
+  }
+
+  if (eldLogError || dutyStatusError) {
+    return (
+      <div className="text-center py-12 text-red-600">
+        Error: {eldLogError?.message || dutyStatusError?.message}
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md flex items-center space-x-2"
+        >
+          <AlertCircle className="w-5 h-5 text-red-600" />
+          <span className="text-sm text-red-600">{error}</span>
+        </motion.div>
+      )}
+
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center space-x-4">
           <Link
@@ -219,7 +218,7 @@ const ELDLogsPage: React.FC = () => {
 
               <Button
                 onClick={generateLog}
-                loading={loading}
+                loading={generateELDLog.isLoading}
                 disabled={!selectedDate}
                 className="w-full"
               >
@@ -234,7 +233,7 @@ const ELDLogsPage: React.FC = () => {
               Generated Logs
             </h2>
 
-            {mockELDLogs.length === 0 ? (
+            {eldLogs?.length === 0 ? (
               <div className="text-center py-8">
                 <FileText className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                 <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -243,26 +242,21 @@ const ELDLogsPage: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-3">
-                {mockELDLogs.map((log) => (
+                {eldLogs?.map((log) => (
                   <div
                     key={log.id}
                     className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                   >
                     <div>
                       <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {new Date(log.date).toLocaleDateString()}
+                        {new Date(log.date!).toLocaleDateString()}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
                         {log.total_miles} miles
                       </p>
                     </div>
                     <button
-                      onClick={() =>
-                        setViewingLog({
-                          ...log,
-                          duty_statuses: mockDutyStatuses,
-                        })
-                      }
+                      onClick={() => handleViewLog(log)}
                       className="text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300"
                     >
                       <Eye className="w-4 h-4" />
@@ -329,7 +323,9 @@ const ELDLogsPage: React.FC = () => {
               </div>
 
               <div className="mb-6">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4"></h3>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                  Duty Status Graph
+                </h3>
                 {renderELDGrid()}
               </div>
 
@@ -394,6 +390,11 @@ const ELDLogsPage: React.FC = () => {
                       </div>
                     )
                   )}
+                  {!viewingLog.duty_statuses?.length && (
+                    <p className="text-center text-gray-500 dark:text-gray-400">
+                      No duty statuses found for this date.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -404,6 +405,10 @@ const ELDLogsPage: React.FC = () => {
                 <textarea
                   className="w-full h-20 p-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md resize-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 dark:bg-gray-700 dark:text-white"
                   placeholder="Add any remarks or notes for this log..."
+                  value={remarks[viewingLog.id] || ""}
+                  onChange={(e) =>
+                    handleRemarkChange(viewingLog.id, e.target.value)
+                  }
                 />
               </div>
             </Card>

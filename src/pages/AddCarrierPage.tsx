@@ -50,7 +50,7 @@ const AddCarrierPage: React.FC = () => {
   };
 
   // Check if user has permission
-  if (!isAdmin) {
+  if (isAdmin == null) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Card className="p-8 text-center">

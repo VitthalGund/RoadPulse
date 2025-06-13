@@ -216,11 +216,11 @@ const CreateTripPage: React.FC = () => {
     try {
       const newTrip = await createTripMutation.mutateAsync({
         vehicle: parseInt(data.vehicle, 10),
-        current_location: data.current_location_coords,
+        current_location_input: data.current_location_coords,
         current_location_name: data.current_location,
-        pickup_location: data.pickup_location_coords,
+        pickup_location_input: data.pickup_location_coords,
         pickup_location_name: data.pickup_location,
-        dropoff_location: data.dropoff_location_coords,
+        dropoff_location_input: data.dropoff_location_coords,
         dropoff_location_name: data.dropoff_location,
         current_cycle_hours: data.current_cycle_hours,
         start_time: data.start_time,

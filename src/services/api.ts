@@ -1,4 +1,4 @@
-import axios, { AxiosResponse } from "axios";
+import axios from "axios";
 
 // API Base Configuration
 const API_BASE_URL =
@@ -32,13 +32,6 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Exclude login and register endpoints from refresh logic
-    const isAuthEndpoint =
-      originalRequest.url?.includes("/api/auth/login") ||
-      originalRequest.url?.includes("/api/auth/register");
-    if (isAuthEndpoint) {
-      return Promise.reject(error);
-    }
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
@@ -81,9 +74,14 @@ export interface User {
   id: number;
   username: string;
   email: string;
-  first_name: string;
-  last_name: string;
-  has_driver?: boolean;
+  is_admin: boolean;
+  driver?: {
+    license_number: string;
+    carrier: {
+      id: number;
+      name: string;
+    };
+  };
 }
 
 export interface Driver {
@@ -106,11 +104,8 @@ export interface Trip {
   driver: Driver;
   vehicle: Vehicle;
   current_location: [number, number];
-  current_location_name: [number, number];
   pickup_location: [number, number];
-  pickup_location_name: [number, number];
   dropoff_location: [number, number];
-  dropoff_location_name: [number, number];
   current_cycle_hours: number;
   start_time: string;
   status: "PLANNED" | "IN_PROGRESS" | "COMPLETED";
@@ -203,9 +198,12 @@ export const tripsAPI = {
 
   createTrip: async (tripData: {
     vehicle: number;
-    current_location: [number, number];
-    pickup_location: [number, number];
-    dropoff_location: [number, number];
+    current_location_input: [number, number];
+    current_location_name: string;
+    pickup_location_input: [number, number];
+    pickup_location_name: string;
+    dropoff_location_input: [number, number];
+    dropoff_location_name: string;
     current_cycle_hours: number;
     start_time: string;
     status?: string;

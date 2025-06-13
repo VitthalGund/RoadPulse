@@ -24,7 +24,7 @@ import Input from "../components/UI/Input";
 import Modal from "../components/UI/Modal";
 
 const DashboardPage: React.FC = () => {
-  const { user, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [vehicleFilter, setVehicleFilter] = useState("ALL");
@@ -32,14 +32,17 @@ const DashboardPage: React.FC = () => {
   const [tripToDelete, setTripToDelete] = useState<number | null>(null);
 
   const formatLocation = (location: [number, number]) => {
+    // In a real app, you'd reverse geocode this or store city names
     return `${location[1].toFixed(4)}, ${location[0].toFixed(4)}`;
   };
 
+  // API hooks
   const { data: trips = [], isLoading, error } = useTrips();
   const { data: vehicles = [] } = useVehicles();
   const updateTripMutation = useUpdateTrip();
   const deleteTripMutation = useDeleteTrip();
 
+  // Calculate summary stats from real data
   const plannedTrips = trips.filter((trip) => trip.status === "PLANNED");
   const inProgressTrips = trips.filter((trip) => trip.status === "IN_PROGRESS");
   const completedTrips = trips.filter((trip) => trip.status === "COMPLETED");
@@ -49,6 +52,7 @@ const DashboardPage: React.FC = () => {
         trips.length
       : 0;
 
+  // Filter trips based on search, status, and vehicle
   const filteredTrips = trips.filter((trip) => {
     const matchesSearch =
       formatLocation(trip.pickup_location)
@@ -396,8 +400,8 @@ const DashboardPage: React.FC = () => {
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {trip.pickup_location_name.slice(0, 19)}... →{" "}
-                            {trip.dropoff_location_name.slice(0, 19)}...
+                            {formatLocation(trip.pickup_location)} →{" "}
+                            {formatLocation(trip.dropoff_location)}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

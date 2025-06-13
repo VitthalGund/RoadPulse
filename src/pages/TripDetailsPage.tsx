@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   MapPin,
@@ -15,66 +15,30 @@ import {
 import Button from "../components/UI/Button";
 import Card from "../components/UI/Card";
 import Modal from "../components/UI/Modal";
-
-// Mock trip data
-const mockTrip = {
-  id: 1,
-  status: "PLANNED",
-  startTime: "2025-01-15T08:00:00Z",
-  vehicle: {
-    id: 1,
-    vehicle_number: "TRK001",
-    license_plate: "ABC123",
-    state: "VA",
-  },
-  pickup_location: "Richmond, VA",
-  dropoff_location: "Norfolk, VA",
-  current_cycle_hours: 20.5,
-  created_at: "2025-01-14T18:28:00Z",
-  driver: { id: 1, full_name: "John Doe", license_number: "DL123456789" },
-};
-
-const mockDutyStatuses = [
-  {
-    id: 1,
-    status: "ON_DUTY_NOT_DRIVING",
-    start_time: "2025-01-15T08:00:00Z",
-    end_time: "2025-01-15T09:00:00Z",
-    location_description: "Pickup Location - Richmond, VA",
-    remarks: "Pre-trip inspection and loading",
-  },
-  {
-    id: 2,
-    status: "DRIVING",
-    start_time: "2025-01-15T09:00:00Z",
-    end_time: "2025-01-15T11:30:00Z",
-    location_description: "En route to rest area",
-    remarks: "Highway driving segment 1",
-  },
-  {
-    id: 3,
-    status: "OFF_DUTY",
-    start_time: "2025-01-15T11:30:00Z",
-    end_time: "2025-01-15T12:00:00Z",
-    location_description: "Rest Area - I-64 Mile 200",
-    remarks: "Mandatory 30-minute break",
-  },
-  {
-    id: 4,
-    status: "DRIVING",
-    start_time: "2025-01-15T12:00:00Z",
-    end_time: "2025-01-15T13:15:00Z",
-    location_description: "Final segment to Norfolk",
-    remarks: "Approaching dropoff location",
-  },
-];
+import { useTripDetails } from "../hooks/useTripDetails";
+import { useTripMutations } from "../hooks/useTripMutations";
 
 const TripDetailsPage: React.FC = () => {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [newStatus, setNewStatus] = useState("");
+  const [error, setError] = useState<string>("");
+
+  const {
+    trip,
+    tripLoading,
+    tripError,
+    dutyStatuses,
+    dutyStatusLoading,
+    dutyStatusError,
+    eldLogs,
+    eldLogLoading,
+    eldLogError,
+  } = useTripDetails(id!);
+  const { startTrip, deleteTrip, generateELDLog } = useTripMutations(id!);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -112,22 +76,46 @@ const TripDetailsPage: React.FC = () => {
   };
 
   const handleStartTrip = async () => {
-    setLoading(true);
-    // Mock API call
-    setTimeout(() => {
-      console.log("Starting trip");
-      setLoading(false);
-    }, 1000);
+    try {
+      setError("");
+      await startTrip.mutateAsync({ status: "IN_PROGRESS" });
+    } catch (err) {
+      setError("Failed to start trip: " + (err as Error).message);
+    }
+  };
+
+  const handleUpdateTrip = async () => {
+    if (!newStatus) {
+      setError("Please select a status.");
+      return;
+    }
+    try {
+      setError("");
+      await startTrip.mutateAsync({ status: newStatus });
+      setUpdateModalOpen(false);
+      setNewStatus("");
+    } catch (err) {
+      setError("Failed to update trip: " + (err as Error).message);
+    }
   };
 
   const handleDeleteTrip = async () => {
-    setLoading(true);
-    // Mock API call
-    setTimeout(() => {
-      console.log("Deleting trip");
-      setDeleteModalOpen(false);
-      setLoading(false);
-    }, 1000);
+    try {
+      setError("");
+      await deleteTrip.mutateAsync();
+      navigate("/dashboard");
+    } catch (err) {
+      setError("Failed to delete trip: " + (err as Error).message);
+    }
+  };
+
+  const handleGenerateELDLog = async () => {
+    try {
+      setError("");
+      await generateELDLog.mutateAsync();
+    } catch (err) {
+      setError("Failed to generate ELD log: " + (err as Error).message);
+    }
   };
 
   const tabs = [
@@ -137,8 +125,36 @@ const TripDetailsPage: React.FC = () => {
     { id: "eld-logs", label: "ELD Logs", icon: FileText },
   ];
 
+  if (tripLoading || dutyStatusLoading || eldLogLoading) {
+    return <div className="text-center py-12">Loading...</div>;
+  }
+
+  if (tripError || dutyStatusError || eldLogError) {
+    return (
+      <div className="text-center py-12 text-red-600">
+        Error:{" "}
+        {tripError?.message || dutyStatusError?.message || eldLogError?.message}
+      </div>
+    );
+  }
+
+  if (!trip) {
+    return <div className="text-center py-12">Trip not found.</div>;
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md flex items-center space-x-2"
+        >
+          <AlertCircle className="w-5 h-5 text-red-600" />
+          <span className="text-sm text-red-600">{error}</span>
+        </motion.div>
+      )}
+
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center space-x-4">
           <Link
@@ -149,10 +165,10 @@ const TripDetailsPage: React.FC = () => {
           </Link>
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white font-poppins">
-              Trip #{mockTrip.id}
+              Trip #{trip.id}
             </h1>
             <p className="text-gray-600 dark:text-gray-300 mt-1">
-              {mockTrip.pickup_location} → {mockTrip.dropoff_location}
+              {trip.pickup_location_name} → {trip.dropoff_location_name}
             </p>
           </div>
         </div>
@@ -160,14 +176,14 @@ const TripDetailsPage: React.FC = () => {
         <div className="flex items-center space-x-3">
           <span
             className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getStatusColor(
-              mockTrip.status
+              trip.status
             )}`}
           >
-            {mockTrip.status.replace("_", " ")}
+            {trip.status.replace("_", " ")}
           </span>
 
-          {mockTrip.status === "PLANNED" && (
-            <Button onClick={handleStartTrip} loading={loading}>
+          {trip.status === "PLANNED" && (
+            <Button onClick={handleStartTrip} loading={startTrip.isLoading}>
               <Play className="w-4 h-4 mr-2" />
               Start Trip
             </Button>
@@ -226,7 +242,7 @@ const TripDetailsPage: React.FC = () => {
                     Driver
                   </span>
                   <span className="text-sm text-gray-900 dark:text-white">
-                    {mockTrip.driver.full_name}
+                    {trip.driver.user.username}
                   </span>
                 </div>
 
@@ -235,8 +251,7 @@ const TripDetailsPage: React.FC = () => {
                     Vehicle
                   </span>
                   <span className="text-sm text-gray-900 dark:text-white">
-                    {mockTrip.vehicle.vehicle_number} (
-                    {mockTrip.vehicle.license_plate})
+                    {trip.vehicle.vehicle_number} ({trip.vehicle.license_plate})
                   </span>
                 </div>
 
@@ -245,7 +260,7 @@ const TripDetailsPage: React.FC = () => {
                     Planned Start
                   </span>
                   <span className="text-sm text-gray-900 dark:text-white">
-                    {new Date(mockTrip.startTime).toLocaleString()}
+                    {new Date(trip.start_time).toLocaleString()}
                   </span>
                 </div>
 
@@ -254,7 +269,7 @@ const TripDetailsPage: React.FC = () => {
                     Cycle Hours Used
                   </span>
                   <span className="text-sm text-gray-900 dark:text-white">
-                    {mockTrip.current_cycle_hours}/70
+                    {trip.current_cycle_hours}/70
                   </span>
                 </div>
 
@@ -283,7 +298,7 @@ const TripDetailsPage: React.FC = () => {
                       Pickup Location
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {mockTrip.pickup_location}
+                      {trip.pickup_location_name}
                     </p>
                   </div>
                 </div>
@@ -295,7 +310,7 @@ const TripDetailsPage: React.FC = () => {
                       Dropoff Location
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {mockTrip.dropoff_location}
+                      {trip.dropoff_location_name}
                     </p>
                   </div>
                 </div>
@@ -357,7 +372,7 @@ const TripDetailsPage: React.FC = () => {
             </div>
 
             <div className="space-y-4">
-              {mockDutyStatuses.map((status) => (
+              {dutyStatuses?.map((status) => (
                 <div
                   key={status.id}
                   className="flex items-start space-x-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
@@ -388,6 +403,11 @@ const TripDetailsPage: React.FC = () => {
                   </div>
                 </div>
               ))}
+              {!dutyStatuses?.length && (
+                <p className="text-center text-gray-500 dark:text-gray-400">
+                  No duty statuses found.
+                </p>
+              )}
             </div>
           </Card>
         )}
@@ -398,54 +418,121 @@ const TripDetailsPage: React.FC = () => {
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                 ELD Logs
               </h2>
-              <Link to={`/eld-logs/${mockTrip.id}`}>
-                <Button>
-                  <FileText className="w-4 h-4 mr-2" />
-                  Generate Log
-                </Button>
-              </Link>
+              <Button
+                onClick={handleGenerateELDLog}
+                loading={generateELDLog.isLoading}
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                Generate Log
+              </Button>
             </div>
 
-            <div className="text-center py-12">
-              <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                No ELD Logs Generated
-              </h3>
-              <p className="text-gray-500 dark:text-gray-400 mb-4">
-                Generate your first ELD log for this trip to ensure compliance.
-              </p>
-              <Link to={`/eld-logs/${mockTrip.id}`}>
-                <Button>
+            {eldLogs?.length ? (
+              <div className="space-y-4">
+                {eldLogs.map((log) => (
+                  <div
+                    key={log.id}
+                    className="flex items-start space-x-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                  >
+                    <div
+                      className={`w-4 h-4 ${getDutyStatusColor(
+                        log.status
+                      )} rounded-full mt-1`}
+                    ></div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+                          {formatDutyStatus(log.status)}
+                        </h3>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {new Date(log.timestamp).toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {log.location}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                  No ELD Logs Generated
+                </h3>
+                <p className="text-gray-500 dark:text-gray-400 mb-4">
+                  Generate your first ELD log for this trip to ensure
+                  compliance.
+                </p>
+                <Button
+                  onClick={handleGenerateELDLog}
+                  loading={generateELDLog.isLoading}
+                >
                   <FileText className="w-4 h-4 mr-2" />
                   Generate ELD Log
                 </Button>
-              </Link>
-            </div>
+              </div>
+            )}
           </Card>
         )}
       </motion.div>
 
       <Modal
         isOpen={updateModalOpen}
-        onClose={() => setUpdateModalOpen(false)}
+        onClose={() => {
+          setUpdateModalOpen(false);
+          setError("");
+          setNewStatus("");
+        }}
         title="Update Trip"
       >
         <div className="space-y-4">
-          <p className="text-gray-600 dark:text-gray-300">
-            Update trip status or other details.
-          </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Trip Status
+            </label>
+            <select
+              value={newStatus}
+              onChange={(e) => setNewStatus(e.target.value)}
+              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"
+            >
+              <option value="">Select status</option>
+              <option value="PLANNED">Planned</option>
+              <option value="IN_PROGRESS">In Progress</option>
+              <option value="COMPLETED">Completed</option>
+            </select>
+          </div>
+          {error && (
+            <p className="text-sm text-red-600 flex items-center">
+              <AlertCircle className="w-4 h-4 mr-1" />
+              {error}
+            </p>
+          )}
           <div className="flex justify-end space-x-3">
-            <Button variant="outline" onClick={() => setUpdateModalOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setUpdateModalOpen(false);
+                setError("");
+                setNewStatus("");
+              }}
+            >
               Cancel
             </Button>
-            <Button>Update Trip</Button>
+            <Button onClick={handleUpdateTrip} loading={startTrip.isLoading}>
+              Update Trip
+            </Button>
           </div>
         </div>
       </Modal>
 
       <Modal
         isOpen={deleteModalOpen}
-        onClose={() => setDeleteModalOpen(false)}
+        onClose={() => {
+          setDeleteModalOpen(false);
+          setError("");
+        }}
         title="Delete Trip"
       >
         <div className="space-y-4">
@@ -456,18 +543,27 @@ const TripDetailsPage: React.FC = () => {
               undone.
             </p>
           </div>
+          {error && (
+            <p className="text-sm text-red-600 flex items-center">
+              <AlertCircle className="w-4 h-4 mr-1" />
+              {error}
+            </p>
+          )}
           <div className="flex justify-end space-x-3">
             <Button
               variant="outline"
-              onClick={() => setDeleteModalOpen(false)}
-              disabled={loading}
+              onClick={() => {
+                setDeleteModalOpen(false);
+                setError("");
+              }}
+              disabled={deleteTrip.isLoading}
             >
               Cancel
             </Button>
             <Button
               variant="danger"
               onClick={handleDeleteTrip}
-              loading={loading}
+              loading={deleteTrip.isLoading}
             >
               Delete Trip
             </Button>
