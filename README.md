@@ -7,6 +7,7 @@ This is the frontend for the RoadPulse application, a web interface for managing
 ## 🧭 Table of Contents
 
 - [✨ Features](#-features)
+- [🎥 Demo Videos](#-demo-videos)
 - [🧰 Tech Stack](#-tech-stack)
 - [⚙️ Setup Instructions](#️-setup-instructions)
 - [📁 Project Structure](#-project-structure)
@@ -25,6 +26,17 @@ This is the frontend for the RoadPulse application, a web interface for managing
 - ⚡ Interactive UI with real-time API integration.
 
 ---
+
+
+## 🎥 Demo Videos
+
+See RoadPulse in action! These Loom videos walk you through key backend features and API usage.
+
+* ▶️ **Loom Demo Part 1**: [Watch Video](https://www.loom.com/share/1d01ecc9970e4f94948b65467d4adde8?sid=4843aea9-bea3-431d-9191-cc82b4263af0)
+* ▶️ **Loom Demo Part 2**: [Watch Video](https://www.loom.com/share/4b596e59e84643ebb6e8f870037e8dbf?sid=1963c16f-6906-4e43-8bd4-902add4f99b2)
+
+---
+
 
 ## 🧰 Tech Stack
 
