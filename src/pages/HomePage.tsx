@@ -56,9 +56,9 @@ const HomePage: React.FC = () => {
     }
   };
 
-  const formatLocation = (location: [number, number]) => {
-    // In a real app, you'd reverse geocode this
-    return `${location[1].toFixed(4)}, ${location[0].toFixed(4)}`;
+  const formatLocation = (trip) => {
+    // Use location names since coordinate arrays are not available
+    return `${trip.pickup_location_name} → ${trip.dropoff_location_name}`;
   };
 
   if (isAuthenticated) {
@@ -205,8 +205,7 @@ const HomePage: React.FC = () => {
                           />
                           <div>
                             <p className="text-sm font-medium text-gray-900 dark:text-white">
-                              {formatLocation(trip.pickup_location)} →{" "}
-                              {formatLocation(trip.dropoff_location)}
+                              {formatLocation(trip)}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400">
                               {trip.vehicle.vehicle_number} •{" "}
@@ -230,7 +229,7 @@ const HomePage: React.FC = () => {
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
                   Quick Actions
                 </h2>
-                <div className="space-y-3">
+                <div className="space-y-3 flex flex-1 flex-col gap-1">
                   <Link to="/trips/create">
                     <Button className="w-full justify-between">
                       Create New Trip

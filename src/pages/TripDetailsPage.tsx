@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useForm } from "react-hook-form";
 import {
   MapPin,
   Clock,
@@ -15,8 +16,35 @@ import {
 import Button from "../components/UI/Button";
 import Card from "../components/UI/Card";
 import Modal from "../components/UI/Modal";
+import Input from "../components/UI/Input";
 import { useTripDetails } from "../hooks/useTripDetails";
 import { useTripMutations } from "../hooks/useTripMutations";
+import { useCreateDutyStatus } from "../hooks/useDutyStatus";
+import { useELDLogs } from "../hooks/useELDLogs";
+
+// Form data interfaces
+interface DutyStatusForm {
+  status: string;
+  start_time: string;
+  end_time: string;
+  location_description: string;
+  remarks?: string;
+}
+
+export interface ELDLogForm {
+  date: string;
+  total_miles: number;
+  fuel_consumed?: number;
+  total_engine_hours?: number;
+  total_idle_hours?: number;
+}
+
+interface Suggestion {
+  place_id: string;
+  display_name: string;
+  lat: string;
+  lon: string;
+}
 
 const TripDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -24,8 +52,17 @@ const TripDetailsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [dutyStatusModalOpen, setDutyStatusModalOpen] = useState(false);
+  const [eldLogModalOpen, setEldLogModalOpen] = useState(false);
   const [newStatus, setNewStatus] = useState("");
   const [error, setError] = useState<string>("");
+  const [successMessage, setSuccessMessage] = useState<string>("");
+  const [locationSuggestions, setLocationSuggestions] = useState<Suggestion[]>(
+    []
+  );
+  const [selectedLocationCoords, setSelectedLocationCoords] = useState<
+    [number, number] | null
+  >(null);
 
   const {
     trip,
@@ -38,7 +75,24 @@ const TripDetailsPage: React.FC = () => {
     eldLogLoading,
     eldLogError,
   } = useTripDetails(id!);
-  const { startTrip, deleteTrip, generateELDLog } = useTripMutations(id!);
+  const { startTrip, deleteTrip } = useTripMutations(id!);
+  const { generateELDLog } = useELDLogs(id!);
+  const createDutyStatusMutation = useCreateDutyStatus();
+
+  const {
+    register: registerDutyStatus,
+    handleSubmit: handleDutyStatusSubmit,
+    reset: resetDutyStatusForm,
+    setValue: setDutyStatusValue,
+    formState: { errors: dutyStatusErrors },
+  } = useForm<DutyStatusForm>();
+
+  const {
+    register: registerELDLog,
+    handleSubmit: handleELDLogSubmit,
+    reset: resetELDLogForm,
+    formState: { errors: eldLogErrors },
+  } = useForm<ELDLogForm>();
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -68,11 +122,37 @@ const TripDetailsPage: React.FC = () => {
     }
   };
 
-  const formatDutyStatus = (status: string) => {
+  const formatDutyStatus = (status: string | undefined | null) => {
+    if (!status) return "Unknown Status";
     return status
       .replace(/_/g, " ")
       .toLowerCase()
       .replace(/\b\w/g, (l) => l.toUpperCase());
+  };
+
+  const fetchLocationSuggestions = async (query: string) => {
+    if (query.length < 3) {
+      setLocationSuggestions([]);
+      return;
+    }
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
+          query
+        )}&format=json&limit=5`,
+        { headers: { "User-Agent": "RoadPulse/1.0" } }
+      );
+      const data: Suggestion[] = await response.json();
+      setLocationSuggestions(data);
+    } catch (err) {
+      console.error("Failed to fetch location suggestions:", err);
+    }
+  };
+
+  const handleLocationSelect = (item: Suggestion) => {
+    setDutyStatusValue("location_description", item.display_name);
+    setSelectedLocationCoords([parseFloat(item.lon), parseFloat(item.lat)]);
+    setLocationSuggestions([]);
   };
 
   const handleStartTrip = async () => {
@@ -109,18 +189,41 @@ const TripDetailsPage: React.FC = () => {
     }
   };
 
-  const handleGenerateELDLog = async () => {
+  const onDutyStatusSubmit = async (data: DutyStatusForm) => {
+    setError("");
     try {
-      setError("");
-      await generateELDLog.mutateAsync();
+      if (!id) return;
+      await createDutyStatusMutation.mutateAsync({
+        tripId: parseInt(id),
+        dutyStatusData: {
+          ...data,
+          location: selectedLocationCoords || [0, 0],
+        },
+      });
+      setDutyStatusModalOpen(false);
+      resetDutyStatusForm();
+      setSelectedLocationCoords(null);
+    } catch (err: any) {
+      setError(err.message || "Failed to create duty status.");
+    }
+  };
+
+  const onELDLogSubmit = async (data: ELDLogForm) => {
+    setError("");
+    setSuccessMessage("");
+    try {
+      await generateELDLog.mutateAsync({ ...data });
+      setEldLogModalOpen(false);
+      resetELDLogForm();
+      setSuccessMessage("ELD Log added successfully!");
+      setTimeout(() => setSuccessMessage(""), 3000);
     } catch (err) {
-      setError("Failed to generate ELD log: " + (err as Error).message);
+      setError("Failed to add ELD log: " + (err as Error).message);
     }
   };
 
   const tabs = [
     { id: "overview", label: "Overview", icon: MapPin },
-    { id: "route", label: "Route", icon: MapPin },
     { id: "duty-status", label: "Duty Status", icon: Clock },
     { id: "eld-logs", label: "ELD Logs", icon: FileText },
   ];
@@ -175,7 +278,7 @@ const TripDetailsPage: React.FC = () => {
 
         <div className="flex items-center space-x-3">
           <span
-            className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getStatusColor(
+            className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full whitespace-nowrap ${getStatusColor(
               trip.status
             )}`}
           >
@@ -242,7 +345,7 @@ const TripDetailsPage: React.FC = () => {
                     Driver
                   </span>
                   <span className="text-sm text-gray-900 dark:text-white">
-                    {trip.driver.user.username}
+                    {trip.driver.user}
                   </span>
                 </div>
 
@@ -316,47 +419,14 @@ const TripDetailsPage: React.FC = () => {
                 </div>
 
                 <div className="border-t border-gray-200 dark:border-gray-600 pt-4 mt-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                        185.2
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Miles
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                        3h 45m
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Est. Time
-                      </p>
-                    </div>
-                  </div>
+                  <p className="text-center text-sm text-gray-500 dark:text-gray-400">
+                    Route metrics will be available once the trip is in
+                    progress.
+                  </p>
                 </div>
               </div>
             </Card>
           </div>
-        )}
-
-        {activeTab === "route" && (
-          <Card className="p-6 h-96">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-              Route Map
-            </h2>
-            <div className="w-full h-full bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-              <div className="text-center">
-                <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500 dark:text-gray-400 mb-2">
-                  Interactive Route Map
-                </p>
-                <p className="text-sm text-gray-400 dark:text-gray-500">
-                  Showing pickup, dropoff, and planned rest stops
-                </p>
-              </div>
-            </div>
-          </Card>
         )}
 
         {activeTab === "duty-status" && (
@@ -365,7 +435,7 @@ const TripDetailsPage: React.FC = () => {
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                 Duty Status Timeline
               </h2>
-              <Button size="sm">
+              <Button size="sm" onClick={() => setDutyStatusModalOpen(true)}>
                 <Clock className="w-4 h-4 mr-2" />
                 Add Status
               </Button>
@@ -418,14 +488,22 @@ const TripDetailsPage: React.FC = () => {
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                 ELD Logs
               </h2>
-              <Button
-                onClick={handleGenerateELDLog}
-                loading={generateELDLog.isLoading}
-              >
+              <Button onClick={() => setEldLogModalOpen(true)}>
                 <FileText className="w-4 h-4 mr-2" />
-                Generate Log
+                Add Log Entry
               </Button>
             </div>
+
+            {successMessage && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-4 p-4 bg-green-50 border border-green-200 rounded-md flex items-center space-x-2"
+              >
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <span className="text-sm text-green-600">{successMessage}</span>
+              </motion.div>
+            )}
 
             {eldLogs?.length ? (
               <div className="space-y-4">
@@ -434,23 +512,25 @@ const TripDetailsPage: React.FC = () => {
                     key={log.id}
                     className="flex items-start space-x-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
                   >
-                    <div
-                      className={`w-4 h-4 ${getDutyStatusColor(
-                        log.status
-                      )} rounded-full mt-1`}
-                    ></div>
+                    <div className="flex-shrink-0 pt-1">
+                      <FileText className="w-4 h-4 text-gray-500" />
+                    </div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                          {formatDutyStatus(log.status)}
+                          Log for {new Date(log.date).toLocaleDateString()}
                         </h3>
                         <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {new Date(log.timestamp).toLocaleString()}
+                          {log.total_miles} miles
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {log.location}
-                      </p>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 grid grid-cols-3 gap-x-4">
+                        <span>Fuel: {log.fuel_consumed ?? "N/A"} gal</span>
+                        <span>
+                          Engine: {log.total_engine_hours ?? "N/A"} hrs
+                        </span>
+                        <span>Idle: {log.total_idle_hours ?? "N/A"} hrs</span>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -459,18 +539,14 @@ const TripDetailsPage: React.FC = () => {
               <div className="text-center py-12">
                 <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                  No ELD Logs Generated
+                  No ELD Logs Found
                 </h3>
                 <p className="text-gray-500 dark:text-gray-400 mb-4">
-                  Generate your first ELD log for this trip to ensure
-                  compliance.
+                  Add your first ELD log entry for this trip.
                 </p>
-                <Button
-                  onClick={handleGenerateELDLog}
-                  loading={generateELDLog.isLoading}
-                >
+                <Button onClick={() => setEldLogModalOpen(true)}>
                   <FileText className="w-4 h-4 mr-2" />
-                  Generate ELD Log
+                  Add Log Entry
                 </Button>
               </div>
             )}
@@ -495,7 +571,7 @@ const TripDetailsPage: React.FC = () => {
             <select
               value={newStatus}
               onChange={(e) => setNewStatus(e.target.value)}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"
+              className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-teal-500 focus:ring-teal-500 dark:bg-gray-700 dark:text-white"
             >
               <option value="">Select status</option>
               <option value="PLANNED">Planned</option>
@@ -569,6 +645,181 @@ const TripDetailsPage: React.FC = () => {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={dutyStatusModalOpen}
+        onClose={() => {
+          setDutyStatusModalOpen(false);
+          resetDutyStatusForm();
+          setError("");
+        }}
+        title="Add Duty Status"
+      >
+        <form onSubmit={handleDutyStatusSubmit(onDutyStatusSubmit)}>
+          <div className="space-y-4">
+            {error && (
+              <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm flex items-center">
+                <AlertCircle className="w-4 h-4 mr-2" /> {error}
+              </div>
+            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Status
+              </label>
+              <select
+                className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-teal-500 focus:ring-teal-500 dark:bg-gray-700 dark:text-white"
+                {...registerDutyStatus("status", {
+                  required: "Status is required",
+                })}
+              >
+                <option value="">Select a status</option>
+                <option value="ON_DUTY_NOT_DRIVING">
+                  On Duty (Not Driving)
+                </option>
+                <option value="DRIVING">Driving</option>
+                <option value="OFF_DUTY">Off Duty</option>
+                <option value="SLEEPER_BERTH">Sleeper Berth</option>
+              </select>
+              {dutyStatusErrors.status && (
+                <p className="text-sm text-red-500 mt-1">
+                  {dutyStatusErrors.status.message}
+                </p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="Start Time"
+                type="datetime-local"
+                error={dutyStatusErrors.start_time?.message}
+                {...registerDutyStatus("start_time", {
+                  required: "Start time is required",
+                })}
+              />
+              <Input
+                label="End Time"
+                type="datetime-local"
+                error={dutyStatusErrors.end_time?.message}
+                {...registerDutyStatus("end_time", {
+                  required: "End time is required",
+                })}
+              />
+            </div>
+
+            <div className="relative">
+              <Input
+                label="Location Description"
+                placeholder="e.g., Richmond, VA"
+                error={dutyStatusErrors.location_description?.message}
+                {...registerDutyStatus("location_description", {
+                  required: "Location description is required",
+                })}
+                onChange={(e) => fetchLocationSuggestions(e.target.value)}
+              />
+              {locationSuggestions.length > 0 && (
+                <ul className="absolute z-20 w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md mt-1 max-h-48 overflow-y-auto">
+                  {locationSuggestions.map((item) => (
+                    <li
+                      key={item.place_id}
+                      className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+                      onMouseDown={() => handleLocationSelect(item)}
+                    >
+                      {item.display_name}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <Input
+              label="Remarks (Optional)"
+              placeholder="e.g., Pre-trip inspection"
+              {...registerDutyStatus("remarks")}
+            />
+
+            <div className="flex justify-end space-x-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDutyStatusModalOpen(false)}
+                disabled={createDutyStatusMutation.isLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                loading={createDutyStatusMutation.isLoading}
+              >
+                Add Status
+              </Button>
+            </div>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={eldLogModalOpen}
+        onClose={() => setEldLogModalOpen(false)}
+        title="Add ELD Log Entry"
+      >
+        <form onSubmit={handleELDLogSubmit(onELDLogSubmit)}>
+          <div className="space-y-4">
+            <Input
+              label="Log Date"
+              type="date"
+              error={eldLogErrors.date?.message}
+              {...registerELDLog("date", { required: "Date is required" })}
+            />
+            <Input
+              label="Total Miles"
+              type="number"
+              step="0.1"
+              placeholder="e.g., 185.2"
+              error={eldLogErrors.total_miles?.message}
+              {...registerELDLog("total_miles", {
+                required: "Total miles are required",
+                valueAsNumber: true,
+              })}
+            />
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 pt-2 border-t border-gray-200 dark:border-gray-600">
+              Fuel & Engine Stats (Optional)
+            </h4>
+            <Input
+              label="Fuel Consumed (gallons)"
+              type="number"
+              step="0.1"
+              placeholder="e.g., 25.5"
+              {...registerELDLog("fuel_consumed", { valueAsNumber: true })}
+            />
+            <Input
+              label="Total Engine Hours"
+              type="number"
+              step="0.1"
+              placeholder="e.g., 8.5"
+              {...registerELDLog("total_engine_hours", { valueAsNumber: true })}
+            />
+            <Input
+              label="Total Idle Hours"
+              type="number"
+              step="0.1"
+              placeholder="e.g., 1.2"
+              {...registerELDLog("total_idle_hours", { valueAsNumber: true })}
+            />
+            <div className="flex justify-end space-x-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEldLogModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" loading={generateELDLog.isLoading}>
+                Add Entry
+              </Button>
+            </div>
+          </div>
+        </form>
       </Modal>
     </div>
   );

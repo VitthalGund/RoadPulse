@@ -31,11 +31,6 @@ const DashboardPage: React.FC = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [tripToDelete, setTripToDelete] = useState<number | null>(null);
 
-  const formatLocation = (location: [number, number]) => {
-    // In a real app, you'd reverse geocode this or store city names
-    return `${location[1].toFixed(4)}, ${location[0].toFixed(4)}`;
-  };
-
   // API hooks
   const { data: trips = [], isLoading, error } = useTrips();
   const { data: vehicles = [] } = useVehicles();
@@ -55,19 +50,19 @@ const DashboardPage: React.FC = () => {
   // Filter trips based on search, status, and vehicle
   const filteredTrips = trips.filter((trip) => {
     const matchesSearch =
-      formatLocation(trip.pickup_location)
+      (trip.pickup_location_name || "")
         .toLowerCase()
         .includes(searchTerm.toLowerCase()) ||
-      formatLocation(trip.dropoff_location)
+      (trip.dropoff_location_name || "")
         .toLowerCase()
         .includes(searchTerm.toLowerCase()) ||
-      trip.vehicle.vehicle_number
+      (trip.vehicle?.vehicle_number || "")
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
     const matchesStatus =
       statusFilter === "ALL" || trip.status === statusFilter;
     const matchesVehicle =
-      vehicleFilter === "ALL" || trip.vehicle.id.toString() === vehicleFilter;
+      vehicleFilter === "ALL" || trip.vehicle?.id.toString() === vehicleFilter;
     return matchesSearch && matchesStatus && matchesVehicle;
   });
 
@@ -308,7 +303,7 @@ const DashboardPage: React.FC = () => {
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-teal-500 focus:ring-teal-500 dark:bg-gray-700 dark:text-white text-sm"
+                    className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-teal-500 focus:ring-teal-500 dark:bg-gray-700 dark:text-white text-sm"
                   >
                     <option value="ALL">All Status</option>
                     <option value="PLANNED">Planned</option>
@@ -322,7 +317,7 @@ const DashboardPage: React.FC = () => {
                   <select
                     value={vehicleFilter}
                     onChange={(e) => setVehicleFilter(e.target.value)}
-                    className="rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-teal-500 focus:ring-teal-500 dark:bg-gray-700 dark:text-white text-sm"
+                    className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-teal-500 focus:ring-teal-500 dark:bg-gray-700 dark:text-white"
                   >
                     <option value="ALL">All Vehicles</option>
                     {vehicles.map((vehicle) => (
@@ -400,16 +395,16 @@ const DashboardPage: React.FC = () => {
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {formatLocation(trip.pickup_location)} →{" "}
-                            {formatLocation(trip.dropoff_location)}
+                            {trip.pickup_location_name} →{" "}
+                            {trip.dropoff_location_name}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900 dark:text-white">
-                            {trip.vehicle.vehicle_number}
+                            {trip.vehicle?.vehicle_number}
                           </div>
                           <div className="text-sm text-gray-500 dark:text-gray-400">
-                            {trip.vehicle.license_plate}
+                            {trip.vehicle?.license_plate}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

@@ -21,11 +21,13 @@ import Card from "../components/UI/Card";
 import L from "leaflet";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import VehicleDropdown from "../components/UI/VehicleDropdown";
 
 interface Vehicle {
   id: number;
   vehicle_number: string;
   license_plate: string;
+  state: string;
 }
 
 interface DutyStatus {
@@ -48,7 +50,7 @@ interface Suggestion {
 }
 
 interface TripForm {
-  vehicle: string;
+  vehicle_id: string;
   current_location: string;
   current_location_coords: [number, number] | null;
   pickup_location: string;
@@ -93,7 +95,7 @@ const CreateTripPage: React.FC = () => {
     setValue,
   } = useForm<TripForm>({
     defaultValues: {
-      vehicle: "",
+      vehicle_id: "",
       current_location: "",
       current_location_coords: null,
       pickup_location: "",
@@ -104,6 +106,7 @@ const CreateTripPage: React.FC = () => {
       start_time: "",
     },
   });
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
 
   const cycleHours = watch("current_cycle_hours");
   const currentCoords = watch("current_location_coords");
@@ -178,6 +181,10 @@ const CreateTripPage: React.FC = () => {
       }
     );
   };
+  const handleVehicleSelect = (vehicle: Vehicle) => {
+    setSelectedVehicle(vehicle);
+    setValue("vehicle_id", vehicle.id.toString());
+  };
 
   const MapClickHandler: React.FC<MapClickHandlerProps> = ({ field }) => {
     useMapEvents({
@@ -215,7 +222,7 @@ const CreateTripPage: React.FC = () => {
     }
     try {
       const newTrip = await createTripMutation.mutateAsync({
-        vehicle: parseInt(data.vehicle, 10),
+        vehicle_id: parseInt(data.vehicle_id, 10),
         current_location_input: data.current_location_coords,
         current_location_name: data.current_location,
         pickup_location_input: data.pickup_location_coords,
@@ -240,35 +247,43 @@ const CreateTripPage: React.FC = () => {
   const calculateRoute = async () => {
     const formData = watch();
     if (
-      !formData.vehicle ||
+      !formData.vehicle_id ||
       !formData.pickup_location_coords ||
       !formData.dropoff_location_coords
     ) {
-      setError("Please fill in vehicle and locations");
+      setError(
+        "Please fill in vehicle and all locations to calculate a route."
+      );
       return;
     }
     try {
       setError("");
-      const tempTrip = await createTripMutation.mutateAsync({
-        vehicle: parseInt(formData.vehicle, 10),
-        current_location:
+      const payload = {
+        vehicle_id: parseInt(formData.vehicle_id, 10),
+        current_location_input:
           formData.current_location_coords || formData.pickup_location_coords,
         current_location_name:
           formData.current_location || formData.pickup_location,
-        pickup_location: formData.pickup_location_coords,
+        pickup_location_input: formData.pickup_location_coords,
         pickup_location_name: formData.pickup_location,
-        dropoff_location: formData.dropoff_location_coords,
+        dropoff_location_input: formData.dropoff_location_coords,
         dropoff_location_name: formData.dropoff_location,
         current_cycle_hours: formData.current_cycle_hours || 0,
         start_time: formData.start_time || new Date().toISOString(),
         status: "PLANNED",
-      });
+      };
+
+      // A temporary trip is created to get the route plan
+      const tempTrip = await createTripMutation.mutateAsync(payload);
+
+      // The route is calculated based on the temporary trip
       const route: RouteData = await calculateRouteMutation.mutateAsync(
         tempTrip.id
       );
+
+      // FIX: The calculated data is now stored in the component's state
       setRouteData(route);
       setRouteCalculated(true);
-      navigate(`/trips/${tempTrip.id}`);
     } catch (err: unknown) {
       const errorMessage =
         (err as { response?: { data?: { error?: string } } })?.response?.data
@@ -307,10 +322,10 @@ const CreateTripPage: React.FC = () => {
             <ArrowLeft className="w-6 h-6" />
           </button>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 font-poppins">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white font-poppins">
               Create New Trip
             </h1>
-            <p className="text-gray-600 mt-2">
+            <p className="text-gray-600 dark:text-gray-300 mt-2">
               Plan your trip with HOS-compliant routing
             </p>
           </div>
@@ -344,7 +359,7 @@ const CreateTripPage: React.FC = () => {
           <ArrowLeft className="w-6 h-6" />
         </button>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 font-poppins">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white font-poppins">
             Create New Trip
           </h1>
           <p className="text-gray-600 mt-2">
@@ -355,7 +370,7 @@ const CreateTripPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-6">
           <Card className="p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6 flex items-center">
               <MapPin className="w-5 h-5 mr-2" />
               Trip Details
             </h2>
@@ -371,25 +386,23 @@ const CreateTripPage: React.FC = () => {
             )}
             <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Vehicle
                 </label>
-                <select
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"
-                  {...register("vehicle", {
+                <VehicleDropdown
+                  vehicles={vehicles}
+                  selectedVehicle={selectedVehicle}
+                  onSelectVehicle={handleVehicleSelect}
+                />
+                <input
+                  type="hidden"
+                  {...register("vehicle_id", {
                     required: "Please select a vehicle",
                   })}
-                >
-                  <option value="">Select a vehicle</option>
-                  {vehicles.map((vehicle: Vehicle) => (
-                    <option key={vehicle.id} value={vehicle.id}>
-                      {vehicle.vehicle_number} ({vehicle.license_plate})
-                    </option>
-                  ))}
-                </select>
-                {errors.vehicle && (
+                />
+                {errors.vehicle_id && (
                   <p className="mt-1 text-sm text-red-600">
-                    {errors.vehicle.message}
+                    {errors.vehicle_id.message}
                   </p>
                 )}
               </div>
@@ -420,7 +433,7 @@ const CreateTripPage: React.FC = () => {
                         variant="outline"
                         onClick={handleGetCurrentLocation}
                         loading={geolocationLoading}
-                        className="h-10"
+                        className="h-10 mt-auto"
                       >
                         <MapPin className="w-4 h-4" />
                       </Button>
@@ -473,7 +486,7 @@ const CreateTripPage: React.FC = () => {
                       }}
                     />
                   </div>
-                  <span className="text-sm text-gray-600">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
                     {70 - cycleHours} hours remaining
                   </span>
                 </div>
@@ -551,8 +564,8 @@ const CreateTripPage: React.FC = () => {
           )}
         </div>
         <div className="space-y-6">
-          <Card className="p-6 h-96 lg:h-[600px]">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <Card className="h-96 lg:h-[600px] flex flex-col">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center p-6">
               <MapPin className="w-5 h-5 mr-2" />
               Route Map
             </h3>

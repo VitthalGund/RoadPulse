@@ -5,7 +5,7 @@ const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 // Create axios instance
-const api = axios.create({
+export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
@@ -141,9 +141,14 @@ export interface ELDLog {
   trip: number;
   date: string;
   total_miles: number;
-  duty_statuses: DutyStatus[];
+  fuel_consumed?: number;
+  total_engine_hours?: number;
+  total_idle_hours?: number;
   created_at: string;
   updated_at: string;
+  status?: string;
+  location?: string;
+  timestamp?: string;
 }
 
 export interface Carrier {
@@ -207,7 +212,7 @@ export const tripsAPI = {
   },
 
   createTrip: async (tripData: {
-    vehicle: number;
+    vehicle_id: number;
     current_location_input: [number, number];
     current_location_name: string;
     pickup_location_input: [number, number];
@@ -218,10 +223,19 @@ export const tripsAPI = {
     start_time: string;
     status?: string;
   }): Promise<Trip> => {
-    const response = await api.post("/api/trips/", {
-      ...tripData,
+    const payload = {
+      vehicle_id: tripData.vehicle_id,
+      current_location_input: tripData.current_location_input,
+      current_location_name: tripData.current_location_name,
+      pickup_location_input: tripData.pickup_location_input,
+      pickup_location_name: tripData.pickup_location_name,
+      dropoff_location_input: tripData.dropoff_location_input,
+      dropoff_location_name: tripData.dropoff_location_name,
+      current_cycle_hours: tripData.current_cycle_hours,
+      start_time: tripData.start_time,
       status: tripData.status || "PLANNED",
-    });
+    };
+    const response = await api.post("/api/trips/", payload);
     return response.data;
   },
 
