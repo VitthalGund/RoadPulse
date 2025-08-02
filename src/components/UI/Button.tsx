@@ -2,7 +2,7 @@ import React, { ButtonHTMLAttributes, forwardRef } from "react";
 import { motion } from "framer-motion";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "danger" | "outline";
+  variant?: "primary" | "secondary" | "danger" | "outline" | "light-on-dark"; // New variant added
   size?: "sm" | "md" | "lg";
   loading?: boolean;
   children: React.ReactNode;
@@ -30,6 +30,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       danger: "bg-red-600 hover:bg-red-700 text-white focus:ring-red-500",
       outline:
         "border-2 border-teal-600 text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/20 focus:ring-teal-500",
+      "light-on-dark":
+        "bg-white text-teal-600 hover:bg-gray-100 focus:ring-white",
     };
 
     const sizes = {

@@ -826,6 +826,7 @@ const HomePage: React.FC = () => {
             <Link to="/register">
               <Button
                 size="lg"
+                variant="light-on-dark"
                 className="bg-white text-teal-600 hover:bg-gray-100 px-8 py-4 text-lg"
               >
                 Start Free Today
