@@ -7,7 +7,7 @@ export const useDutyStatuses = (tripId: number) => {
     () => api.get(`/api/trips/${tripId}/duty-status/`).then((res) => res.data),
     {
       enabled: !!tripId,
-      staleTime: 2 * 60 * 1000,
+      staleTime: 2 * 60 * 1000, // 2 minutes
     }
   );
 };
@@ -34,8 +34,11 @@ export const useCreateDutyStatus = () => {
         .post(`/api/trips/${tripId}/duty-status/`, dutyStatusData)
         .then((res) => res.data),
     {
-      onSuccess: (data) => {
-        queryClient.invalidateQueries(["dutyStatuses", data.trip]);
+      onSuccess: (_, variables) => {
+        queryClient.invalidateQueries([
+          "dutyStatuses",
+          variables.tripId.toString(),
+        ]);
       },
     }
   );
