@@ -93,8 +93,11 @@ const AdminDashboard: React.FC = () => {
       await createCarrierMutation.mutateAsync(data);
       setCarrierModalOpen(false);
       resetCarrierForm();
-    } catch (err: any) {
-      setError(err.message || "Failed to create carrier.");
+    } catch (err) {
+      const errorMessage =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail || (err as Error).message;
+      setError(errorMessage || "Failed to create carrier.");
     }
   };
 
@@ -107,8 +110,11 @@ const AdminDashboard: React.FC = () => {
       });
       setVehicleModalOpen(false);
       resetVehicleForm();
-    } catch (err: any) {
-      setError(err.message || "Failed to create vehicle.");
+    } catch (err) {
+      const errorMessage =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail || (err as Error).message;
+      setError(errorMessage || "Failed to create carrier.");
     }
   };
 

@@ -39,11 +39,11 @@ const AddCarrierPage: React.FC = () => {
 
       // Navigate back to dashboard instead of previous page
       navigate("/dashboard");
-    } catch (err: any) {
+    } catch (err) {
       const errorMessage =
-        err.response?.data?.error ||
-        err.response?.data?.detail ||
-        err.message ||
+        (err as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail ||
+        (err as Error).message ||
         "Failed to create carrier";
       setError(errorMessage);
     }

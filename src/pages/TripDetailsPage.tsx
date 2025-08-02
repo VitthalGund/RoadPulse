@@ -160,7 +160,10 @@ const TripDetailsPage: React.FC = () => {
       setError("");
       await startTrip.mutateAsync({ status: "IN_PROGRESS" });
     } catch (err) {
-      setError("Failed to start trip: " + (err as Error).message);
+      const errorMessage =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail || (err as Error).message;
+      setError(errorMessage || "Failed to create carrier.");
     }
   };
 
@@ -175,7 +178,10 @@ const TripDetailsPage: React.FC = () => {
       setUpdateModalOpen(false);
       setNewStatus("");
     } catch (err) {
-      setError("Failed to update trip: " + (err as Error).message);
+      const errorMessage =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail || (err as Error).message;
+      setError(errorMessage || "Failed to create carrier.");
     }
   };
 
@@ -185,7 +191,10 @@ const TripDetailsPage: React.FC = () => {
       await deleteTrip.mutateAsync();
       navigate("/dashboard");
     } catch (err) {
-      setError("Failed to delete trip: " + (err as Error).message);
+      const errorMessage =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail || (err as Error).message;
+      setError(errorMessage || "Failed to create carrier.");
     }
   };
 
@@ -203,8 +212,11 @@ const TripDetailsPage: React.FC = () => {
       setDutyStatusModalOpen(false);
       resetDutyStatusForm();
       setSelectedLocationCoords(null);
-    } catch (err: any) {
-      setError(err.message || "Failed to create duty status.");
+    } catch (err) {
+      const errorMessage =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail || (err as Error).message;
+      setError(errorMessage || "Failed to create carrier.");
     }
   };
 
@@ -218,7 +230,10 @@ const TripDetailsPage: React.FC = () => {
       setSuccessMessage("ELD Log added successfully!");
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (err) {
-      setError("Failed to add ELD log: " + (err as Error).message);
+      const errorMessage =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail || (err as Error).message;
+      setError(errorMessage || "Failed to create carrier.");
     }
   };
 

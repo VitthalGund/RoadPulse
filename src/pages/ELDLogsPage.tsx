@@ -78,7 +78,10 @@ const ELDLogsPage: React.FC = () => {
         ),
       });
     } catch (err) {
-      setError("Failed to generate ELD log: " + (err as Error).message);
+      const errorMessage =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail || (err as Error).message;
+      setError(errorMessage || "Failed to create carrier.");
     }
   };
 

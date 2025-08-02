@@ -36,7 +36,10 @@ const LoginPage: React.FC = () => {
       await login(data.username, data.password);
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      const errorMessage =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail || (err as Error).message;
+      setError(errorMessage || "Failed to create carrier.");
     } finally {
       setLoading(false);
     }

@@ -22,6 +22,7 @@ import L from "leaflet";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import VehicleDropdown from "../components/UI/VehicleDropdown";
+import { AxiosError } from "axios";
 
 interface Vehicle {
   id: number;
@@ -234,12 +235,12 @@ const CreateTripPage: React.FC = () => {
         status: "PLANNED",
       });
       navigate(`/trips/${newTrip.id}`);
-    } catch (err: unknown) {
+    } catch (err) {
       const errorMessage =
         (err as { response?: { data?: { detail?: string } } })?.response?.data
           ?.detail ||
         (err as Error).message ||
-        "Failed to create trip";
+        "Failed to calculate route";
       setError(errorMessage);
     }
   };
@@ -284,10 +285,10 @@ const CreateTripPage: React.FC = () => {
       // FIX: The calculated data is now stored in the component's state
       setRouteData(route);
       setRouteCalculated(true);
-    } catch (err: unknown) {
+    } catch (err) {
       const errorMessage =
-        (err as { response?: { data?: { error?: string } } })?.response?.data
-          ?.error ||
+        (err as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail ||
         (err as Error).message ||
         "Failed to calculate route";
       setError(errorMessage);

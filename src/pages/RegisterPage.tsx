@@ -56,7 +56,10 @@ const RegisterPage: React.FC = () => {
       await registerUser(registerData);
       navigate("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed");
+      const errorMessage =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail || (err as Error).message;
+      setError(errorMessage || "Failed to create carrier.");
     } finally {
       setLoading(false);
     }
